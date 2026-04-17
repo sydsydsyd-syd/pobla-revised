@@ -149,8 +149,11 @@ export async function sendOrderConfirmation(order: Order, customerEmail: string)
 }
 
 /** Sent when kitchen marks order as ready */
+/** Sent when kitchen marks order as ready */
 export async function sendOrderReadyNotification(order: Order, customerEmail: string): Promise<void> {
   const isDelivery = order.orderType === "delivery";
+  const isPickup = order.orderType === "pickup";
+
   const body = `
     <p style="margin:0 0 6px;font-size:14px;color:#6b5f5e;">Hi <strong>${order.customerName}</strong>,</p>
     <p style="margin:0 0 20px;font-size:14px;color:#6b5f5e;">
@@ -167,7 +170,7 @@ export async function sendOrderReadyNotification(order: Order, customerEmail: st
       <tr>
         <td style="font-size:12px;color:#166534;padding-top:8px;">Status</td>
         <td style="font-size:13px;font-weight:700;color:#166534;text-align:right;padding-top:8px;">
-          ${isDelivery ? " Ready" : " Ready for Pickup"}
+          ${isDelivery ? "Ready for Rider Pickup" : "Ready for Pickup"}
         </td>
       </tr>
       <tr>
@@ -179,14 +182,22 @@ export async function sendOrderReadyNotification(order: Order, customerEmail: st
     <p style="margin:0;font-size:13px;color:#9c8f8e;">
       ${isDelivery
       ? "Please prepare <strong>" + formatCurrency(order.total) + "</strong> for Cash on Delivery."
-      : "Please bring your order number when you come. Thank you!"}
+      : `Please come to the restaurant to pick up your order. Your order number is <strong>${order.orderNumber}</strong>.`}
     </p>
+    
+    ${isPickup ? `
+    <div style="background:#fef3c7;border-radius:10px;padding:12px;margin-top:16px;">
+      <p style="margin:0;font-size:12px;color:#92400e;">
+        📍 <strong>Pickup Location:</strong> Poblacion Pares ATBP. - Olaveria St., Mogpog, Marinduque
+      </p>
+    </div>
+    ` : ''}
   `;
 
   await sendEmail(
     customerEmail,
     ` Order Ready — ${order.orderNumber} | Pobla`,
-    baseTemplate(isDelivery ? "Order Ready! " : "Ready for Pickup! ", body)
+    baseTemplate(isDelivery ? "Order Ready for Rider!" : "Ready for Pickup!", body)
   );
 }
 
