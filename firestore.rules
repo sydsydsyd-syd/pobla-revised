@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isOwnerOrManager() {
+      return isLoggedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userRole() in ["owner", "manager"];
+    }
+
+    // ── users ─────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+
+      // Read own doc
+      allow get: if isLoggedIn() && request.auth.uid == userId;
+
+      // Owner/Manager can read any doc or list all
+      allow get, list: if isOwnerOrManager();
+
+      // Create: own doc (normal sign-up, ensureUserProfile, rider registration)
+      // OR owner/manager creating a staff account
+      allow create: if isLoggedIn() && (
+                      request.auth.uid == userId
+                      || isOwnerOrManager()
+                    );
+
+      // Update own profile (cannot self-promote role) OR owner/manager can change any role
+      allow update: if isLoggedIn() && (
+                      (request.auth.uid == userId &&
+                       !("role" in request.resource.data.diff(resource.data).affectedKeys()))
+                      || isOwnerOrManager()
+                    );
+
+      allow delete: if isOwnerOrManager();
+    }
+
+    // ── riderRegistrations ────────────────────────────────────────────────────
+    match /riderRegistrations/{regId} {
+
+      // Rider can create their own registration
+      allow create: if isLoggedIn();
+
+      // Rider can read their own registration; owner/manager can read all
+      allow get: if isLoggedIn() && (
+                   resource.data.uid == request.auth.uid
+                   || isOwnerOrManager()
+                 );
+      allow list: if isOwnerOrManager();
+
+      // Only owner/manager can update (approve/reject)
+      allow update: if isOwnerOrManager();
+
+      allow delete: if isOwnerOrManager();
+    }
+
+    // ── menuItems ─────────────────────────────────────────────────────────────
+    match /menuItems/{itemId} {
+      allow read:   if true;
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn();
+      allow delete: if isLoggedIn();
+    }
+
+    // ── orders ────────────────────────────────────────────────────────────────
+    match /orders/{orderId} {
+      allow read:   if isLoggedIn();
+      allow create: if isLoggedIn();
+      allow update: if isLoggedIn();
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 20 15% 96%;
+    --foreground: 10 20% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 10 20% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 10 20% 15%;
+    --primary: 0 37% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 15 15% 92%;
+    --secondary-foreground: 10 20% 20%;
+    --muted: 15 12% 90%;
+    --muted-foreground: 10 10% 50%;
+    --accent: 15 12% 90%;
+    --accent-foreground: 10 20% 20%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 15 20% 86%;
+    --input: 15 20% 86%;
+    --ring: 0 37% 55%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "DM Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: "Syne", sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Syne", sans-serif;
+  }
+  .font-mono {
+    font-family: "JetBrains Mono", monospace;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #f0e8e7; }
+::-webkit-scrollbar-thumb { background: #bc5d5d80; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #bc5d5d; }
