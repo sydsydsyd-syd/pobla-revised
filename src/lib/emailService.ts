@@ -338,7 +338,7 @@ export async function sendRiderApprovalEmail(to: string, name: string): Promise<
     </div>
 
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${import.meta.env.VITE_APP_URL || 'https://pobla.ph'}/rider/dashboard" 
+      <a href="${import.meta.env.VITE_APP_URL || 'https://pobla-revised.vercel.app/'}/rider/dashboard" 
          style="background: #bc5d5d; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
         Go to Rider Dashboard →
       </a>
@@ -390,7 +390,7 @@ export async function sendRiderRejectionEmail(to: string, name: string, reason?:
     </div>
 
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${import.meta.env.VITE_APP_URL || 'https://pobla.ph'}/contact" 
+      <a href="${import.meta.env.VITE_APP_URL || 'https://pobla-revised.vercel.app/'}/contact" 
          style="background: #6b7280; color: white; padding: 10px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
         Contact Support →
       </a>
@@ -430,7 +430,7 @@ export async function sendRiderWelcomeReminder(to: string, name: string): Promis
     </div>
 
     <div style="text-align: center; margin: 24px 0 16px;">
-      <a href="${import.meta.env.VITE_APP_URL || 'https://pobla.ph'}/rider/dashboard" 
+      <a href="${import.meta.env.VITE_APP_URL || 'https://pobla-revised.vercel.app/'}/rider/dashboard" 
          style="background: #bc5d5d; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600;">
         Start Delivering →
       </a>
