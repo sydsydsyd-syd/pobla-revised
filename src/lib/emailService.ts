@@ -243,10 +243,15 @@ export async function sendOrderOutForDeliveryNotification(order: Order, customer
 }
 
 export async function sendOrderDeliveredNotification(order: Order, customerEmail: string): Promise<void> {
+  const isPickup = order.orderType === "pickup";
+  const isDelivery = order.orderType === "delivery";
+
   const body = `
     <p style="margin:0 0 6px;font-size:14px;color:#6b5f5e;">Hi <strong>${order.customerName}</strong>,</p>
     <p style="margin:0 0 20px;font-size:14px;color:#6b5f5e;">
-      Your order has been delivered! Thank you for choosing Pobla Order Hub.
+      ${isPickup
+      ? "Your order has been picked up! Thank you for choosing Pobla Order Hub."
+      : "Your order has been delivered! Thank you for choosing Pobla Order Hub."}
     </p>
 
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;background:#dcfce7;border-radius:10px;padding:16px;border:1px solid #bbf7d0;">
@@ -256,10 +261,12 @@ export async function sendOrderDeliveredNotification(order: Order, customerEmail
       </tr>
       <tr>
         <td style="font-size:12px;color:#166534;padding-top:8px;">Status</td>
-        <td style="font-size:13px;font-weight:700;color:#166534;text-align:right;padding-top:8px;">✅ Delivered</td>
+        <td style="font-size:13px;font-weight:700;color:#166534;text-align:right;padding-top:8px;">
+          ${isPickup ? "✅ Picked Up" : "✅ Delivered"}
+        </td>
       </tr>
       <tr>
-        <td style="font-size:12px;color:#166534;padding-top:8px;">Delivered On</td>
+        <td style="font-size:12px;color:#166534;padding-top:8px;">${isPickup ? "Picked Up On" : "Delivered On"}</td>
         <td style="font-size:13px;font-weight:600;color:#166534;text-align:right;padding-top:8px;">${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</td>
       </tr>
     </table>
@@ -268,7 +275,7 @@ export async function sendOrderDeliveredNotification(order: Order, customerEmail
     <p style="margin:0 0 10px;font-size:12px;font-weight:600;color:#9c8f8e;text-transform:uppercase;letter-spacing:1px;">Order Summary</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
       ${itemRows(order)}
-      ${order.deliveryFee > 0 ? `
+      ${order.deliveryFee > 0 && isDelivery ? `
       <tr>
         <td style="padding:8px 0;font-size:13px;color:#9c8f8e;">Delivery Fee</td>
         <td style="padding:8px 0;font-size:13px;color:#9c8f8e;text-align:right;">${formatCurrency(order.deliveryFee)}</td>
@@ -280,7 +287,9 @@ export async function sendOrderDeliveredNotification(order: Order, customerEmail
     </table>
 
     <div style="background:#f0fdf4;border-radius:10px;padding:16px;margin:20px 0;text-align:center;">
-      <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#166534;">Enjoy your meal! 🍽️</p>
+      <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#166534;">
+        ${isPickup ? "Enjoy your meal! 🍽️" : "Enjoy your meal! 🍽️"}
+      </p>
       <p style="margin:0;font-size:12px;color:#9c8f8e;">We'd love to hear your feedback</p>
     </div>
 
@@ -291,8 +300,8 @@ export async function sendOrderDeliveredNotification(order: Order, customerEmail
 
   await sendEmail(
     customerEmail,
-    ` Delivered — ${order.orderNumber} | Pobla`,
-    baseTemplate("Order Delivered!", body)
+    `${isPickup ? "✅ Order Picked Up" : "✅ Order Delivered"} — ${order.orderNumber} | Pobla`,
+    baseTemplate(isPickup ? "Order Picked Up!" : "Order Delivered!", body)
   );
 }
 

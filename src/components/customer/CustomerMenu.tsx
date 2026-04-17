@@ -1,9 +1,9 @@
-//CustomerMenu
 import React, { useState, useMemo, useEffect } from "react";
-import type { MenuItem, MenuCategory, PaymentMethod } from "@/types";
+import type { MenuItem, MenuCategory, PaymentMethod, OrderType } from "@/types";
+import { MenuCategory as MenuCategoryEnum, PaymentMethod as PaymentMethodEnum, OrderType as OrderTypeEnum } from "@/types";
 import { useApp } from "@/context/AppContext";
 import { useAuth } from "@/context/AuthContext";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, formatMinutes, cn } from "@/lib/utils";
 import { cardUrl } from "@/lib/cloudinary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,31 +27,34 @@ import {
 import { FireIcon } from "@heroicons/react/24/solid";
 
 const CATEGORIES: MenuCategory[] = [
-  "Rice Meals",
-  "Ala Carte",
-  "Pobla Specials",
-  "Burgers",
-  "Sandwiches",
-  "Chillers",
+  MenuCategoryEnum.RICE_MEALS,
+  MenuCategoryEnum.ALA_CARTE,
+  MenuCategoryEnum.POBLA_SPECIALS,
+  MenuCategoryEnum.BURGERS,
+  MenuCategoryEnum.SANDWICHES,
+  MenuCategoryEnum.CHILLERS,
+  MenuCategoryEnum.ADD_ONS,
 ];
 
 // Heroicons per category
 const CAT_ICON: Record<MenuCategory, React.ReactNode> = {
-  "Rice Meals": <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15m-6.75-12.891c-.501-.05-.75-.082-.75-.082M5 14.5l-1.22 1.22a2.25 2.25 0 000 3.182l.696.696a2.25 2.25 0 003.182 0l.696-.696a2.25 2.25 0 000-3.182L5 14.5zm14.8.5l-1.22 1.22a2.25 2.25 0 010 3.182l-.696.696a2.25 2.25 0 01-3.182 0l-.696-.696a2.25 2.25 0 010-3.182L19.8 15z" /></svg>,
-  "Ala Carte": <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0L3 18m0-13.5h18" /></svg>,
-  "Pobla Specials": <StarIcon className="w-4 h-4" />,
-  "Burgers": <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>,
-  "Sandwiches": <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" /></svg>,
-  "Chillers": <BeakerIcon className="w-4 h-4" />,
+  [MenuCategoryEnum.RICE_MEALS]: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15m-6.75-12.891c-.501-.05-.75-.082-.75-.082M5 14.5l-1.22 1.22a2.25 2.25 0 000 3.182l.696.696a2.25 2.25 0 003.182 0l.696-.696a2.25 2.25 0 000-3.182L5 14.5zm14.8.5l-1.22 1.22a2.25 2.25 0 010 3.182l-.696.696a2.25 2.25 0 01-3.182 0l-.696-.696a2.25 2.25 0 010-3.182L19.8 15z" /></svg>,
+  [MenuCategoryEnum.ALA_CARTE]: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0L3 18m0-13.5h18" /></svg>,
+  [MenuCategoryEnum.POBLA_SPECIALS]: <StarIcon className="w-4 h-4" />,
+  [MenuCategoryEnum.BURGERS]: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>,
+  [MenuCategoryEnum.SANDWICHES]: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M12 17.25h8.25" /></svg>,
+  [MenuCategoryEnum.CHILLERS]: <BeakerIcon className="w-4 h-4" />,
+  [MenuCategoryEnum.ADD_ONS]: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>,
 };
 
 const CAT_BG: Record<MenuCategory, string> = {
-  "Rice Meals": "bg-amber-50",
-  "Ala Carte": "bg-orange-50",
-  "Pobla Specials": "bg-red-50",
-  "Burgers": "bg-yellow-50",
-  "Sandwiches": "bg-lime-50",
-  "Chillers": "bg-blue-50",
+  [MenuCategoryEnum.RICE_MEALS]: "bg-amber-50",
+  [MenuCategoryEnum.ALA_CARTE]: "bg-orange-50",
+  [MenuCategoryEnum.POBLA_SPECIALS]: "bg-red-50",
+  [MenuCategoryEnum.BURGERS]: "bg-yellow-50",
+  [MenuCategoryEnum.SANDWICHES]: "bg-lime-50",
+  [MenuCategoryEnum.CHILLERS]: "bg-blue-50",
+  [MenuCategoryEnum.ADD_ONS]: "bg-purple-50",
 };
 
 type PageTab = "menu" | "orders";
@@ -86,7 +89,6 @@ function MenuItemCard({ item, onGuestClick }: { item: MenuItem; onGuestClick: ()
   const inc = () => dispatch({ type: "UPDATE_CART_ITEM", payload: { menuItemId: item.id, quantity: qty + 1 } });
   const dec = () => dispatch({ type: "UPDATE_CART_ITEM", payload: { menuItemId: item.id, quantity: qty - 1 } });
 
-  // Filter out "bestseller" from displayed tags since it's shown separately
   const displayTags = item.tags.filter(tag => tag !== "bestseller");
 
   return (
@@ -145,7 +147,8 @@ function MenuItemCard({ item, onGuestClick }: { item: MenuItem; onGuestClick: ()
 
         <div className="flex items-center gap-3 mt-2 mb-3">
           <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-            <ClockIcon className="w-3 h-3" />{item.preparationTime}m
+            <ClockIcon className="w-3 h-3" />
+            {formatMinutes(item.preparationTime)}
           </span>
           {item.available
             ? <span className="inline-flex items-center gap-1 text-[11px] text-green-600">
@@ -197,33 +200,23 @@ export default function CustomerMenu({ onOpenCart, onLoginClick }: { onOpenCart:
   const { menuItems, menuLoading, menuError } = state;
 
   useEffect(() => {
-    if (state.cart.orderType === "pickup" && state.cart.paymentMethod === "cashpickup") {
-      dispatch({ type: "SET_PAYMENT_METHOD", payload: "cashpickup" as PaymentMethod });
+    if (state.cart.orderType === OrderTypeEnum.PICKUP && state.cart.paymentMethod === PaymentMethodEnum.CASHPICKUP) {
+      dispatch({ type: "SET_PAYMENT_METHOD", payload: PaymentMethodEnum.CASHPICKUP });
     }
   }, [state.cart.orderType, dispatch]);
 
   const filtered = useMemo(() =>
     menuItems.filter((item) => {
-      // If no search query, only filter by category
       if (!query.trim()) {
         return cat === "All" || item.category === cat;
       }
 
       const searchTerm = query.toLowerCase().trim();
-
-      // Search in name (primary)
       const nameMatch = item.name.toLowerCase().includes(searchTerm);
-
-      // Search in description (secondary)
       const descMatch = item.description.toLowerCase().includes(searchTerm);
-
-      // Search in tags (tertiary)
       const tagMatch = item.tags.some((t) => t.toLowerCase().includes(searchTerm));
-
-      // Category filter
       const categoryMatch = cat === "All" || item.category === cat;
 
-      // Return true if matches search AND category
       return categoryMatch && (nameMatch || descMatch || tagMatch);
     }), [menuItems, query, cat]);
 
@@ -338,7 +331,13 @@ export default function CustomerMenu({ onOpenCart, onLoginClick }: { onOpenCart:
                   "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border",
                   cat === c ? "bg-brand text-white border-brand shadow-sm" : "bg-white text-foreground border-border hover:border-brand/30"
                 )}>
-                {CAT_ICON[c]}{c}
+                {CAT_ICON[c]}
+                {c === MenuCategoryEnum.RICE_MEALS ? "Rice Meals" :
+                  c === MenuCategoryEnum.ALA_CARTE ? "Ala Carte" :
+                    c === MenuCategoryEnum.POBLA_SPECIALS ? "Pobla Specials" :
+                      c === MenuCategoryEnum.BURGERS ? "Burgers" :
+                        c === MenuCategoryEnum.SANDWICHES ? "Sandwiches" :
+                          c === MenuCategoryEnum.CHILLERS ? "Chillers" : "Add-ons"}
               </button>
             ))}
           </div>

@@ -1,6 +1,6 @@
-//CashierDashboard
 import React, { useState, useEffect } from "react";
 import type { Order, OrderStatus } from "@/types";
+import { OrderStatus as OrderStatusEnum, PaymentMethod as PaymentMethodEnum, OrderType as OrderTypeEnum } from "@/types";
 import { formatCurrency, ORDER_STATUS_LABEL, formatDate, cn } from "@/lib/utils";
 import { subscribeToPendingOrders, updateOrderStatus } from "@/lib/orderService";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,25 @@ function PendingOrderCard({ order, onConfirm, onCancel }: {
   const mins = Math.floor((Date.now() - order.createdAt.getTime()) / 60000);
   const isOld = mins > 5;
 
+  const getPaymentMethodDisplay = () => {
+    switch (order.paymentMethod) {
+      case PaymentMethodEnum.CASH:
+        return { label: "Cash on Delivery", icon: <BanknotesIcon className="w-3.5 h-3.5" />, bg: "bg-green-50 text-green-700" };
+      case PaymentMethodEnum.CASHPICKUP:
+        return { label: "Cash on Pickup", icon: <BanknotesIcon className="w-3.5 h-3.5" />, bg: "bg-green-50 text-green-700" };
+      case PaymentMethodEnum.GCASH:
+        return { label: "GCash", icon: <CreditCardIcon className="w-3.5 h-3.5" />, bg: "bg-blue-50 text-blue-700" };
+      case PaymentMethodEnum.MAYA:
+        return { label: "Maya", icon: <CreditCardIcon className="w-3.5 h-3.5" />, bg: "bg-blue-50 text-blue-700" };
+      case PaymentMethodEnum.CARD:
+        return { label: "Card", icon: <CreditCardIcon className="w-3.5 h-3.5" />, bg: "bg-purple-50 text-purple-700" };
+      default:
+        return { label: order.paymentMethod, icon: <BanknotesIcon className="w-3.5 h-3.5" />, bg: "bg-gray-50 text-gray-700" };
+    }
+  };
+
+  const paymentDisplay = getPaymentMethodDisplay();
+
   return (
     <Card className={cn(
       "overflow-hidden transition-all",
@@ -59,9 +78,9 @@ function PendingOrderCard({ order, onConfirm, onCancel }: {
             <div className="flex items-center gap-1.5 mt-0.5">
               <p className="text-xs text-muted-foreground">{order.customerName}</p>
               <span className="text-muted-foreground">·</span>
-              <Badge variant={order.orderType === "delivery" ? "info" : "warning"} className="text-[10px] px-1.5 py-0 gap-1">
-                {order.orderType === "delivery" ? <TruckIcon className="w-2.5 h-2.5" /> : <BuildingStorefrontIcon className="w-2.5 h-2.5" />}
-                {order.orderType}
+              <Badge variant={order.orderType === OrderTypeEnum.DELIVERY ? "info" : "warning"} className="text-[10px] px-1.5 py-0 gap-1">
+                {order.orderType === OrderTypeEnum.DELIVERY ? <TruckIcon className="w-2.5 h-2.5" /> : <BuildingStorefrontIcon className="w-2.5 h-2.5" />}
+                {order.orderType === OrderTypeEnum.DELIVERY ? "Delivery" : "Pickup"}
               </Badge>
             </div>
           </div>
@@ -92,10 +111,9 @@ function PendingOrderCard({ order, onConfirm, onCancel }: {
 
         {/* Order details */}
         <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-          <div className={cn("flex items-center gap-1.5 p-2 rounded-lg font-semibold",
-            order.paymentMethod === "cash" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700")}>
-            {order.paymentMethod === "cash" ? <BanknotesIcon className="w-3.5 h-3.5" /> : <CreditCardIcon className="w-3.5 h-3.5" />}
-            {order.paymentMethod === "cash" ? `Cash — ${formatCurrency(order.total)}` : order.paymentMethod.toUpperCase()}
+          <div className={cn("flex items-center gap-1.5 p-2 rounded-lg font-semibold", paymentDisplay.bg)}>
+            {paymentDisplay.icon}
+            {paymentDisplay.label} — {formatCurrency(order.total)}
           </div>
           {order.customerAddress && (
             <div className="flex items-center gap-1.5 p-2 rounded-lg bg-muted/50 text-muted-foreground font-medium truncate">
@@ -129,6 +147,16 @@ function PendingOrderCard({ order, onConfirm, onCancel }: {
 }
 
 function RecentOrderRow({ order }: { order: Order }) {
+  const getStatusBadgeStyle = () => {
+    if (order.status === OrderStatusEnum.CONFIRMED) {
+      return "bg-blue-100 text-blue-800 border-blue-200";
+    }
+    if (order.status === OrderStatusEnum.CANCELLED) {
+      return "bg-red-100 text-red-800 border-red-200";
+    }
+    return "bg-gray-100 text-gray-700 border-gray-200";
+  };
+
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
       <div className="flex-1 min-w-0">
@@ -137,9 +165,7 @@ function RecentOrderRow({ order }: { order: Order }) {
       </div>
       <span className={cn(
         "text-[10px] font-bold px-2 py-1 rounded-full border",
-        order.status === "confirmed" ? "bg-blue-100 text-blue-800 border-blue-200" :
-          order.status === "cancelled" ? "bg-red-100 text-red-800 border-red-200" :
-            "bg-gray-100 text-gray-700 border-gray-200"
+        getStatusBadgeStyle()
       )}>
         {ORDER_STATUS_LABEL[order.status]}
       </span>
@@ -170,7 +196,7 @@ export default function CashierDashboard() {
     today.setHours(0, 0, 0, 0);
     const q = query(
       collection(db, "orders"),
-      where("status", "in", ["confirmed", "cancelled"])
+      where("status", "in", [OrderStatusEnum.CONFIRMED, OrderStatusEnum.CANCELLED])
     );
     const unsub = onSnapshot(q, snap => {
       const orders = snap.docs.map(d => toOrder(d.id, d.data() as Record<string, unknown>))
@@ -178,19 +204,19 @@ export default function CashierDashboard() {
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
         .slice(0, 20);
       setRecentOrders(orders);
-      const confirmed = orders.filter(o => o.status === "confirmed").length;
-      const cancelled = orders.filter(o => o.status === "cancelled").length;
+      const confirmed = orders.filter(o => o.status === OrderStatusEnum.CONFIRMED).length;
+      const cancelled = orders.filter(o => o.status === OrderStatusEnum.CANCELLED).length;
       setCount(c => ({ ...c, confirmedToday: confirmed, cancelledToday: cancelled }));
     });
     return unsub;
   }, []);
 
   async function handleConfirm(orderId: string) {
-    await updateOrderStatus(orderId, "confirmed");
+    await updateOrderStatus(orderId, OrderStatusEnum.CONFIRMED);
   }
 
   async function handleCancel(orderId: string) {
-    await updateOrderStatus(orderId, "cancelled");
+    await updateOrderStatus(orderId, OrderStatusEnum.CANCELLED);
   }
 
   return (

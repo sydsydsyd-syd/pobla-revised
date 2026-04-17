@@ -1,6 +1,6 @@
-//DeliveryDashboard
 import React, { useState, useEffect, useRef } from "react";
-import type { Order } from "@/types";
+import type { Order, OrderStatus, PaymentMethod } from "@/types";
+import { OrderStatus as OrderStatusEnum, PaymentMethod as PaymentMethodEnum } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { formatCurrency, cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -35,10 +35,10 @@ function DeliveryCard({ order, onPickup, onOutForDelivery, onDeliver, riderId }:
   onDeliver: (id: string, photoUrl?: string) => void;
   riderId: string;
 }) {
-  const isAvail = order.status === "ready" && !order.assignedRiderId;
-  const isPickedUp = order.status === "picked_up" && order.assignedRiderId === riderId;
-  const isOutForDel = order.status === "out_for_delivery" && order.assignedRiderId === riderId;
-  const isDone = order.status === "delivered";
+  const isAvail = order.status === OrderStatusEnum.READY && !order.assignedRiderId;
+  const isPickedUp = order.status === OrderStatusEnum.PICKED_UP && order.assignedRiderId === riderId;
+  const isOutForDel = order.status === OrderStatusEnum.OUT_FOR_DELIVERY && order.assignedRiderId === riderId;
+  const isDone = order.status === OrderStatusEnum.DELIVERED;
   const [uploading, setUploading] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -46,6 +46,32 @@ function DeliveryCard({ order, onPickup, onOutForDelivery, onDeliver, riderId }:
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const getPaymentDisplay = () => {
+    if (order.paymentMethod === PaymentMethodEnum.CASH || order.paymentMethod === PaymentMethodEnum.CASHPICKUP) {
+      return {
+        icon: <BanknotesIcon className="w-4 h-4" />,
+        text: `Collect ${formatCurrency(order.total)} cash`,
+        bg: "bg-green-50 text-green-700"
+      };
+    }
+    return {
+      icon: <CreditCardIcon className="w-4 h-4" />,
+      text: "Payment already made",
+      bg: "bg-brand/5 text-brand"
+    };
+  };
+
+  const getStatusBadge = () => {
+    if (isAvail) return { label: "Ready for Pickup", variant: "warning" as const };
+    if (isPickedUp) return { label: "Picked Up", variant: "info" as const };
+    if (isOutForDel) return { label: "Out for Delivery", variant: "default" as const };
+    if (isDone) return { label: "Delivered", variant: "success" as const };
+    return { label: "Unknown", variant: "secondary" as const };
+  };
+
+  const statusBadge = getStatusBadge();
+  const paymentDisplay = getPaymentDisplay();
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -71,7 +97,6 @@ function DeliveryCard({ order, onPickup, onOutForDelivery, onDeliver, riderId }:
       }
     } catch (err) {
       console.error("Camera access error:", err);
-      // Fallback to file upload
       fileRef.current?.click();
       setShowCamera(false);
     }
@@ -104,7 +129,6 @@ function DeliveryCard({ order, onPickup, onOutForDelivery, onDeliver, riderId }:
     if (!capturedPhoto) return;
     setUploading(true);
     try {
-      // Convert base64 to blob
       const blob = await fetch(capturedPhoto).then(res => res.blob());
       const file = new File([blob], `delivery-proof-${order.orderNumber}.jpg`, { type: "image/jpeg" });
       const result = await uploadToCloudinary(file, "pobla-delivery-proof");
@@ -118,7 +142,6 @@ function DeliveryCard({ order, onPickup, onOutForDelivery, onDeliver, riderId }:
     }
   }
 
-  // Cleanup camera on unmount
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -145,8 +168,8 @@ function DeliveryCard({ order, onPickup, onOutForDelivery, onDeliver, riderId }:
         <div className="flex items-start justify-between">
           <div>
             <p className="font-display font-black text-sm text-foreground">{order.orderNumber}</p>
-            <Badge variant={isPickedUp ? "info" : isOutForDel ? "default" : isDone ? "success" : "warning"} className="text-[10px] mt-1">
-              {isAvail ? "Ready for Pickup" : isPickedUp ? "Picked Up" : isOutForDel ? "Out for Delivery" : "Delivered"}
+            <Badge variant={statusBadge.variant} className="text-[10px] mt-1">
+              {statusBadge.label}
             </Badge>
           </div>
           <p className="font-display font-black text-brand">{formatCurrency(order.total)}</p>
@@ -189,12 +212,9 @@ function DeliveryCard({ order, onPickup, onOutForDelivery, onDeliver, riderId }:
         </div>
 
         {/* Payment */}
-        <div className={cn(
-          "flex items-center gap-2 text-xs font-semibold p-2 rounded-lg",
-          order.paymentMethod === "cash" ? "bg-green-50 text-green-700" : "bg-brand/5 text-brand"
-        )}>
-          {order.paymentMethod === "cash" ? <BanknotesIcon className="w-4 h-4" /> : <CreditCardIcon className="w-4 h-4" />}
-          {order.paymentMethod === "cash" ? `Collect ${formatCurrency(order.total)} cash` : "Payment already made"}
+        <div className={cn("flex items-center gap-2 text-xs font-semibold p-2 rounded-lg", paymentDisplay.bg)}>
+          {paymentDisplay.icon}
+          {paymentDisplay.text}
         </div>
 
         {/* Camera Modal */}
@@ -328,29 +348,25 @@ export default function DeliveryDashboard() {
   const [done, setDone] = useState<Order[]>([]);
   const [togglingOnline, setTogglingOnline] = useState(false);
 
-  // Load online status
   useEffect(() => {
     if (!riderId) return;
     getRiderOnlineStatus(riderId).then(setIsOnline);
   }, [riderId]);
 
-  // Subscribe to available deliveries (ready, delivery, unassigned)
   useEffect(() => {
     if (!riderId) return;
     return subscribeToAvailableDeliveries(setAvailable);
   }, [riderId]);
 
-  // Subscribe to rider's active orders
   useEffect(() => {
     if (!riderId) return;
     return subscribeToRiderOrders(riderId, setActive);
   }, [riderId]);
 
-  // Subscribe to rider's completed orders
   useEffect(() => {
     if (!riderId) return;
     return subscribeToRiderHistory(riderId, orders => {
-      setDone(orders.filter(o => o.status === "delivered"));
+      setDone(orders.filter(o => o.status === OrderStatusEnum.DELIVERED));
     });
   }, [riderId]);
 
@@ -362,29 +378,24 @@ export default function DeliveryDashboard() {
     setTogglingOnline(false);
   }
 
-  // Accept delivery → status: picked_up
   async function handlePickup(orderId: string) {
-    await updateOrderStatus(orderId, "picked_up", {
+    await updateOrderStatus(orderId, OrderStatusEnum.PICKED_UP, {
       assignedRiderId: riderId,
       assignedRiderName: riderName,
       assignedRiderPhone: user?.email ?? "",
     });
   }
 
-  // Rider leaves restaurant → status: out_for_delivery + notify customer
   async function handleOutForDelivery(orderId: string) {
-    await updateOrderStatus(orderId, "out_for_delivery");
+    await updateOrderStatus(orderId, OrderStatusEnum.OUT_FOR_DELIVERY);
   }
 
-  // Complete delivery with optional photo proof
   async function handleDeliver(orderId: string, photoProofUrl?: string) {
-    await updateOrderStatus(orderId, "delivered", {
+    await updateOrderStatus(orderId, OrderStatusEnum.DELIVERED, {
       ...(photoProofUrl ? { photoProofUrl } : {}),
     });
     await incrementRiderDeliveries(riderId);
   }
-
-  const todayEarnings = done.length * 49; // approximate tip per delivery
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -393,7 +404,6 @@ export default function DeliveryDashboard() {
           <h2 className="font-display font-bold text-xl text-foreground">Rider Dashboard</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Hello, {riderName}!</p>
         </div>
-        {/* Online/Offline toggle — Diagram 3 */}
         <button
           onClick={toggleOnline}
           disabled={togglingOnline}

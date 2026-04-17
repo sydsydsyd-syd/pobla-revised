@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { saveOrder } from "@/lib/orderService";
 import { sendOrderConfirmation } from "@/lib/emailService";
 import {
-  formatCurrency, generateOrderNumber, PAYMENT_LABEL,
+  formatCurrency, formatMinutes, generateOrderNumber, PAYMENT_LABEL,
   FREE_DELIVERY_THRESHOLD, calcEstimatedReadyMinutes, DELIVERY_ETA_MINUTES, cn,
 } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -123,19 +123,24 @@ export default function CartSidebar({ open, onClose }: { open: boolean; onClose:
 
   const { cart } = state;
 
-  // Auto-fill name from user
+  // Auto-fill name from user displayName
   useEffect(() => {
     if (user?.displayName) setName(user.displayName);
   }, [user]);
 
-  // AUTO-FILL PHONE AND ADDRESS FROM USER PROFILE
+  // AUTO-FILL NAME, PHONE AND ADDRESS FROM USER PROFILE
   useEffect(() => {
     if (userProfile && !isGuest) {
+      // Auto-fill name from profile
+      if (userProfile.name) {
+        setName(userProfile.name);
+      }
+      // Auto-fill phone
       if (userProfile.phone) {
         setPhone(userProfile.phone);
-        // Validate the auto-filled phone number
         validatePhoneNumber(userProfile.phone);
       }
+      // Auto-fill address
       if (userProfile.address) {
         setAddress(userProfile.address);
       }
@@ -238,9 +243,9 @@ export default function CartSidebar({ open, onClose }: { open: boolean; onClose:
       customerEmail: user?.email ?? undefined,
       ...(address ? { customerAddress: address } : {}),
       items,
-      status: OrderStatus.PENDING,        // Use enum instead of "pending"
-      orderType: cart.orderType,           // This should already be OrderType enum
-      paymentMethod: cart.paymentMethod,   // This should already be PaymentMethod enum
+      status: OrderStatus.PENDING,
+      orderType: cart.orderType,
+      paymentMethod: cart.paymentMethod,
       paymentStatus: PaymentStatus.PENDING,
       subtotal: cartSubtotal,
       deliveryFee: cartDeliveryFee,
@@ -381,8 +386,19 @@ export default function CartSidebar({ open, onClose }: { open: boolean; onClose:
                 <Label>Full Name</Label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Juan dela Cruz" value={name} onChange={e => setName(e.target.value)} className="pl-9" />
+                  <Input
+                    placeholder="Juan dela Cruz"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
+                {userProfile?.name && !isGuest && name === userProfile.name && (
+                  <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
+                    <CheckCircleIcon className="w-3 h-3" />
+                    Auto-filled from your profile
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -562,8 +578,8 @@ export default function CartSidebar({ open, onClose }: { open: boolean; onClose:
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>ETA</span>
                   <span>{order.orderType === "pickup"
-                    ? `~${order.estimatedReadyMinutes}m for pickup`
-                    : `~${order.estimatedDeliveryMinutes}m for delivery`}
+                    ? `~${formatMinutes(order.estimatedReadyMinutes || 20)} for pickup`
+                    : `~${formatMinutes(order.estimatedDeliveryMinutes || 45)} for delivery`}
                   </span>
                 </div>
                 <Separator />

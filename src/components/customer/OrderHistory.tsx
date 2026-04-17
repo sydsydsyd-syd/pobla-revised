@@ -1,6 +1,7 @@
 //OrderHistory
 import React, { useEffect, useState } from "react";
 import type { Order, OrderItem } from "@/types";
+import { OrderStatus as OrderStatusEnum, OrderType as OrderTypeEnum, PaymentMethod as PaymentMethodEnum } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { useApp } from "@/context/AppContext";
 import { subscribeToUserOrders } from "@/lib/orderService";
@@ -12,13 +13,22 @@ import {
   CheckCircleIcon, XCircleIcon, MapPinIcon, CameraIcon,
 } from "@heroicons/react/24/outline";
 
-const ACTIVE_STATUSES = ["pending", "confirmed", "preparing", "ready", "picked_up", "out_for_delivery"];
+const ACTIVE_STATUSES = [
+  OrderStatusEnum.PENDING,
+  OrderStatusEnum.CONFIRMED,
+  OrderStatusEnum.PREPARING,
+  OrderStatusEnum.READY,
+  OrderStatusEnum.PICKED_UP,
+  OrderStatusEnum.OUT_FOR_DELIVERY,
+];
 
 // Helper function to get the display status based on order type and status
 const getDisplayStatus = (order: Order): { label: string; className: string } => {
   // For pickup orders that are completed or picked_up
-  if (order.orderType === "pickup") {
-    if (order.status === "completed" || order.status === "picked_up" || order.status === "delivered") {
+  if (order.orderType === OrderTypeEnum.PICKUP) {
+    if (order.status === OrderStatusEnum.COMPLETED ||
+      order.status === OrderStatusEnum.PICKED_UP ||
+      order.status === OrderStatusEnum.DELIVERED) {
       return {
         label: "Picked Up",
         className: "bg-green-50 text-green-700 border-green-200"
@@ -27,7 +37,7 @@ const getDisplayStatus = (order: Order): { label: string; className: string } =>
   }
 
   // For delivery orders that are delivered
-  if (order.orderType === "delivery" && order.status === "delivered") {
+  if (order.orderType === OrderTypeEnum.DELIVERY && order.status === OrderStatusEnum.DELIVERED) {
     return {
       label: "Delivered",
       className: ORDER_STATUS_CLASS[order.status] || "bg-green-50 text-green-700 border-green-200"
@@ -35,7 +45,7 @@ const getDisplayStatus = (order: Order): { label: string; className: string } =>
   }
 
   // For completed delivery orders (if needed)
-  if (order.orderType === "delivery" && order.status === "completed") {
+  if (order.orderType === OrderTypeEnum.DELIVERY && order.status === OrderStatusEnum.COMPLETED) {
     return {
       label: "Delivered",
       className: ORDER_STATUS_CLASS.completed || "bg-green-50 text-green-700 border-green-200"
@@ -67,6 +77,23 @@ export default function OrderHistory({ onReorder }: { onReorder: () => void }) {
       setLoading(false);
     }, () => setLoading(false));
   }, [user]);
+
+  const getPaymentMethodLabel = (paymentMethod: string): string => {
+    switch (paymentMethod) {
+      case PaymentMethodEnum.CASHPICKUP:
+        return "Cash on Pickup";
+      case PaymentMethodEnum.CASH:
+        return "Cash on Delivery";
+      case PaymentMethodEnum.GCASH:
+        return "GCash";
+      case PaymentMethodEnum.MAYA:
+        return "Maya";
+      case PaymentMethodEnum.CARD:
+        return "Card";
+      default:
+        return paymentMethod;
+    }
+  };
 
   function handleReorder(order: Order) {
     const added: string[] = [], skipped: string[] = [];
@@ -198,7 +225,9 @@ export default function OrderHistory({ onReorder }: { onReorder: () => void }) {
                 <span className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1", displayStatus.className)}>
                   {displayStatus.label}
                 </span>
-                <Badge variant="secondary" className="text-[10px] capitalize">{order.orderType}</Badge>
+                <Badge variant="secondary" className="text-[10px] capitalize">
+                  {order.orderType === OrderTypeEnum.DELIVERY ? "Delivery" : "Pickup"}
+                </Badge>
               </div>
             </div>
 
@@ -216,8 +245,8 @@ export default function OrderHistory({ onReorder }: { onReorder: () => void }) {
             </div>
 
             <div className="px-4 pb-4 flex items-center justify-between gap-2">
-              <span className="text-[11px] text-muted-foreground capitalize">
-                {order.paymentMethod === "cashpickup" ? "Cash on Pickup" : "Cash on Delivery"}
+              <span className="text-[11px] text-muted-foreground">
+                {getPaymentMethodLabel(order.paymentMethod)}
               </span>
               <div className="flex items-center gap-2">
                 {/* Track active orders */}
@@ -230,14 +259,15 @@ export default function OrderHistory({ onReorder }: { onReorder: () => void }) {
                   </button>
                 )}
                 {/* View proof for delivered orders (delivery only) */}
-                {(order.status === "delivered" || order.status === "completed") && order.orderType === "delivery" && order.photoProofUrl && (
-                  <button
-                    onClick={() => setProofUrl(order.photoProofUrl!)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-green-700 border border-green-300 bg-green-50 hover:bg-green-500 hover:text-white transition-all active:scale-95"
-                  >
-                    <CameraIcon className="w-3.5 h-3.5" /> View Proof
-                  </button>
-                )}
+                {(order.status === OrderStatusEnum.DELIVERED || order.status === OrderStatusEnum.COMPLETED) &&
+                  order.orderType === OrderTypeEnum.DELIVERY && order.photoProofUrl && (
+                    <button
+                      onClick={() => setProofUrl(order.photoProofUrl!)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-green-700 border border-green-300 bg-green-50 hover:bg-green-500 hover:text-white transition-all active:scale-95"
+                    >
+                      <CameraIcon className="w-3.5 h-3.5" /> View Proof
+                    </button>
+                  )}
                 <button
                   onClick={() => handleReorder(order)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-brand border border-brand/30 hover:bg-brand hover:text-white transition-all active:scale-95"

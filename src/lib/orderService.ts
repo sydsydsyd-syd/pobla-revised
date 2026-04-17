@@ -29,6 +29,7 @@ export async function saveOrder(order: Order, userId: string): Promise<string> {
   const payload: Record<string, unknown> = {
     orderNumber: order.orderNumber,
     customerId: order.customerId,
+    userId: userId,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     items: order.items.map(item => ({
@@ -48,7 +49,6 @@ export async function saveOrder(order: Order, userId: string): Promise<string> {
     total: order.total,
     estimatedReadyMinutes: order.estimatedReadyMinutes ?? 20,
     estimatedDeliveryMinutes: order.estimatedDeliveryMinutes ?? 45,
-    userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -56,7 +56,10 @@ export async function saveOrder(order: Order, userId: string): Promise<string> {
   if (order.customerEmail) payload.customerEmail = order.customerEmail;
   if (order.notes) payload.notes = order.notes;
 
+  console.log("📝 Saving order for user:", userId);
+  console.log("📝 Order payload:", { customerId: order.customerId, userId });
   const ref = await addDoc(collection(db, COL), payload);
+  console.log("✅ Order saved with ID:", ref.id);
   return ref.id;
 }
 
@@ -79,6 +82,18 @@ export async function updateOrderStatus(
   };
   const ts = tsField[status];
 
+  console.log(`📝 Updating order ${orderId} status to:`, status);
+
+  // First, check if the order is already in this status to prevent duplicate updates
+  const currentOrderSnap = await getDoc(doc(db, COL, orderId));
+  if (currentOrderSnap.exists()) {
+    const currentData = currentOrderSnap.data();
+    if (currentData.status === status) {
+      console.log(`⚠️ Order ${orderId} is already in status ${status}, skipping duplicate update`);
+      return;
+    }
+  }
+
   await updateDoc(doc(db, COL, orderId), {
     status,
     ...(ts ? { [ts]: serverTimestamp() } : {}),
@@ -86,7 +101,7 @@ export async function updateOrderStatus(
     updatedAt: serverTimestamp(),
   });
 
-  // Fetch order details for email (use a small delay to ensure the update is complete)
+  // Fetch order details for email - but only if not already sent
   setTimeout(async () => {
     try {
       const orderSnap = await getDoc(doc(db, COL, orderId));
@@ -100,23 +115,38 @@ export async function updateOrderStatus(
         return;
       }
 
-      // Send email based on status
+      // Check if email was already sent for this status
+      const emailSentKey = `${status}_email_sent`;
+      if (orderData[emailSentKey] === true) {
+        console.log(`⚠️ Email for status ${status} already sent for order ${order.orderNumber}, skipping duplicate`);
+        return;
+      }
+
       switch (status) {
         case OrderStatusEnum.READY:
           await sendOrderReadyNotification(order, order.customerEmail);
           console.log(`✅ Ready notification sent for order ${order.orderNumber}`);
+          // Mark email as sent to prevent duplicates
+          await updateDoc(doc(db, COL, orderId), {
+            [emailSentKey]: true
+          });
           break;
         case OrderStatusEnum.OUT_FOR_DELIVERY:
           await sendOrderOutForDeliveryNotification(order, order.customerEmail);
           console.log(`✅ Out for delivery notification sent for order ${order.orderNumber}`);
+          await updateDoc(doc(db, COL, orderId), {
+            [emailSentKey]: true
+          });
           break;
         case OrderStatusEnum.DELIVERED:
         case OrderStatusEnum.COMPLETED:
           await sendOrderDeliveredNotification(order, order.customerEmail);
           console.log(`✅ Delivered notification sent for order ${order.orderNumber}`);
+          await updateDoc(doc(db, COL, orderId), {
+            [emailSentKey]: true
+          });
           break;
         default:
-          // No email for other statuses
           break;
       }
     } catch (error) {
@@ -130,16 +160,19 @@ export function subscribeToPendingOrders(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
+  console.log("🔍 Subscribing to pending orders...");
   const q = query(
     collection(db, COL),
-    where("status", "==", OrderStatusEnum.PENDING)
+    where("status", "==", OrderStatusEnum.PENDING),
+    orderBy("createdAt", "asc")
   );
   return onSnapshot(q, snap => {
+    console.log(`📦 Pending orders snapshot received. Size: ${snap.size}`);
     const orders = snap.docs
       .map(d => toOrder(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     callback(orders);
-  }, err => { console.error("[orderService]", err); onError?.(err); });
+  }, err => { console.error("[orderService] Pending orders error:", err); onError?.(err); });
 }
 
 /** Kitchen: subscribe to confirmed, preparing, ready orders */
@@ -147,20 +180,23 @@ export function subscribeToKitchenOrders(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
+  console.log("🔍 Subscribing to kitchen orders...");
   const q = query(
     collection(db, COL),
     where("status", "in", [
       OrderStatusEnum.CONFIRMED,
       OrderStatusEnum.PREPARING,
       OrderStatusEnum.READY
-    ])
+    ]),
+    orderBy("createdAt", "asc")
   );
   return onSnapshot(q, snap => {
+    console.log(`📦 Kitchen orders snapshot received. Size: ${snap.size}`);
     const orders = snap.docs
       .map(d => toOrder(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     callback(orders);
-  }, err => { console.error("[orderService]", err); onError?.(err); });
+  }, err => { console.error("[orderService] Kitchen orders error:", err); onError?.(err); });
 }
 
 /** Delivery: subscribe to ready (unassigned) delivery orders */
@@ -168,18 +204,21 @@ export function subscribeToAvailableDeliveries(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
+  console.log("🔍 Subscribing to available deliveries...");
   const q = query(
     collection(db, COL),
     where("status", "==", OrderStatusEnum.READY),
-    where("orderType", "==", OrderTypeEnum.DELIVERY)
+    where("orderType", "==", OrderTypeEnum.DELIVERY),
+    orderBy("createdAt", "asc")
   );
   return onSnapshot(q, snap => {
+    console.log(`📦 Available deliveries snapshot received. Size: ${snap.size}`);
     const orders = snap.docs
       .map(d => toOrder(d.id, d.data() as Record<string, unknown>))
       .filter(o => !o.assignedRiderId)
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     callback(orders);
-  }, err => { console.error("[orderService]", err); onError?.(err); });
+  }, err => { console.error("[orderService] Available deliveries error:", err); onError?.(err); });
 }
 
 /** Delivery: subscribe to orders assigned to a specific rider */
@@ -188,20 +227,23 @@ export function subscribeToRiderOrders(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
+  console.log(`🔍 Subscribing to rider orders for rider: ${riderId}`);
   const q = query(
     collection(db, COL),
     where("assignedRiderId", "==", riderId),
     where("status", "in", [
       OrderStatusEnum.PICKED_UP,
       OrderStatusEnum.OUT_FOR_DELIVERY
-    ])
+    ]),
+    orderBy("createdAt", "desc")
   );
   return onSnapshot(q, snap => {
+    console.log(`📦 Rider orders snapshot received. Size: ${snap.size}`);
     const orders = snap.docs
       .map(d => toOrder(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     callback(orders);
-  }, err => { console.error("[orderService]", err); onError?.(err); });
+  }, err => { console.error("[orderService] Rider orders error:", err); onError?.(err); });
 }
 
 /** Customer: subscribe to a single order for tracking */
@@ -210,25 +252,44 @@ export function subscribeToOrder(
   callback: (order: Order | null) => void,
   onError?: (err: Error) => void
 ): () => void {
+  console.log(`🔍 Subscribing to single order: ${orderId}`);
   return onSnapshot(doc(db, COL, orderId),
     snap => callback(snap.exists() ? toOrder(snap.id, snap.data() as Record<string, unknown>) : null),
-    err => { console.error("[orderService]", err); onError?.(err); }
+    err => { console.error("[orderService] Single order error:", err); onError?.(err); }
   );
 }
 
-/** Customer: all orders for a user (newest first) */
+/** Customer: all orders for a user (newest first) - simplified to only use userId */
 export function subscribeToUserOrders(
   userId: string,
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const q = query(collection(db, COL), where("userId", "==", userId));
-  return onSnapshot(q, snap => {
-    const orders = snap.docs
-      .map(d => toOrder(d.id, d.data() as Record<string, unknown>))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    callback(orders);
-  }, err => { console.error("[orderService]", err); onError?.(err); });
+  console.log(`🔍 Subscribing to user orders for userId: ${userId}`);
+
+  // Simple query - only by userId (which has an index)
+  const q = query(
+    collection(db, COL),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
+
+  return onSnapshot(q,
+    (snap) => {
+      console.log(`📦 User orders snapshot received. Size: ${snap.size}`);
+      const orders: Order[] = [];
+      snap.forEach((doc) => {
+        const data = doc.data();
+        orders.push(toOrder(doc.id, data as Record<string, unknown>));
+      });
+      console.log(`✅ Returning ${orders.length} orders for user ${userId}`);
+      callback(orders);
+    },
+    (err) => {
+      console.error("[orderService] User orders error:", err);
+      onError?.(err);
+    }
+  );
 }
 
 /** Rider: all orders ever assigned to this rider (by assignedRiderId) */
@@ -237,16 +298,19 @@ export function subscribeToRiderHistory(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
+  console.log(`🔍 Subscribing to rider history for rider: ${riderId}`);
   const q = query(
     collection(db, COL),
-    where("assignedRiderId", "==", riderId)
+    where("assignedRiderId", "==", riderId),
+    orderBy("createdAt", "desc")
   );
   return onSnapshot(q, snap => {
+    console.log(`📦 Rider history snapshot received. Size: ${snap.size}`);
     const orders = snap.docs
       .map(d => toOrder(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     callback(orders);
-  }, err => { console.error("[orderService]", err); onError?.(err); });
+  }, err => { console.error("[orderService] Rider history error:", err); onError?.(err); });
 }
 
 /** Owner: all orders */
@@ -254,10 +318,13 @@ export function subscribeToAllOrders(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
-  return onSnapshot(collection(db, COL), snap => {
+  console.log("🔍 Subscribing to all orders...");
+  const q = query(collection(db, COL), orderBy("createdAt", "desc"));
+  return onSnapshot(q, snap => {
+    console.log(`📦 All orders snapshot received. Size: ${snap.size}`);
     const orders = snap.docs
       .map(d => toOrder(d.id, d.data() as Record<string, unknown>))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     callback(orders);
-  }, err => { console.error("[orderService]", err); onError?.(err); });
+  }, err => { console.error("[orderService] All orders error:", err); onError?.(err); });
 }

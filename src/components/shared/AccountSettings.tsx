@@ -1,4 +1,3 @@
-//AccountSettings
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -29,6 +28,69 @@ import { cn } from "@/lib/utils";
 
 interface Props { open: boolean; onClose: () => void; }
 type Section = "profile" | "email" | "password";
+
+// Password strength checker function (same as SignupPage)
+function getPasswordStrength(password: string): {
+  score: number;
+  label: string;
+  color: string;
+  requirements: string[];
+} {
+  let score = 0;
+  const requirements: string[] = [];
+
+  if (password.length >= 8) {
+    score += 1;
+  } else {
+    requirements.push("At least 8 characters");
+  }
+
+  if (/[a-z]/.test(password)) {
+    score += 1;
+  } else {
+    requirements.push("One lowercase letter");
+  }
+
+  if (/[A-Z]/.test(password)) {
+    score += 1;
+  } else {
+    requirements.push("One uppercase letter");
+  }
+
+  if (/[0-9]/.test(password)) {
+    score += 1;
+  } else {
+    requirements.push("One number");
+  }
+
+  if (/[^A-Za-z0-9]/.test(password)) {
+    score += 1;
+  } else {
+    requirements.push("One special character (!@#$%^&*)");
+  }
+
+  let label = "";
+  let color = "";
+
+  if (password.length === 0) {
+    label = "";
+    color = "#c8b8b6";
+  } else if (score <= 2) {
+    label = "Weak";
+    color = "#dc2626";
+  } else if (score <= 3) {
+    label = "Fair";
+    color = "#f59e0b";
+  } else if (score <= 4) {
+    label = "Good";
+    color = "#10b981";
+  } else {
+    label = "Strong";
+    color = "#059669";
+  }
+
+  return { score, label, color, requirements };
+}
 
 // ─── Shared primitives ────────────────────────────────────────────────────────
 
@@ -139,7 +201,6 @@ function ProfileSection() {
 
       {toast && <Toast {...toast} />}
 
-      {/* Avatar card */}
       <div className="flex items-center gap-4 p-4 rounded-3xl border border-border/50 bg-gradient-to-br from-brand/5 to-transparent">
         <div
           className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white shrink-0 shadow-lg"
@@ -204,8 +265,6 @@ function EmailSection() {
     try {
       const cred = EmailAuthProvider.credential(user.email, password);
       await reauthenticateWithCredential(user, cred);
-      // verifyBeforeUpdateEmail sends a verification link to the new email.
-      // The change only takes effect after the user clicks the link.
       await verifyBeforeUpdateEmail(user, newEmail.trim());
       showToast("Verification email sent! Check your new inbox to confirm the change.");
       setNewEmail(""); setPassword("");
@@ -270,23 +329,20 @@ function PasswordSection() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
+  const passwordStrength = getPasswordStrength(newPass);
+  const passwordsMatch = newPass === confirm && newPass.length > 0 && confirm.length > 0;
+  const isPasswordValid = passwordStrength.score >= 3;
+
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 4000);
   }
 
-  const strength = newPass.length === 0 ? 0 : newPass.length < 6 ? 1 : newPass.length < 10 ? 2 : 3;
-  const strengthMeta = [
-    { label: "", color: "" },
-    { label: "Weak", color: "bg-red-400" },
-    { label: "Fair", color: "bg-yellow-400" },
-    { label: "Strong", color: "bg-green-500" },
-  ];
-
   async function handleSave() {
     if (!current) return showToast("Please enter your current password.", false);
     if (!newPass) return showToast("Please enter a new password.", false);
     if (newPass.length < 6) return showToast("Password must be at least 6 characters.", false);
+    if (!isPasswordValid) return showToast("Please use a stronger password (at least 'Good' strength).", false);
     if (newPass !== confirm) return showToast("Passwords do not match.", false);
     if (!user?.email) return;
     setSaving(true);
@@ -313,7 +369,7 @@ function PasswordSection() {
     <div className="space-y-6">
       <div>
         <h3 className="font-black text-lg text-foreground tracking-tight">Change Password</h3>
-        <p className="text-sm text-muted-foreground mt-1">Use at least 6 characters for a strong password.</p>
+        <p className="text-sm text-muted-foreground mt-1">Password must be at least 6 characters and meet the strength requirements.</p>
       </div>
 
       {toast && <Toast {...toast} />}
@@ -324,25 +380,38 @@ function PasswordSection() {
 
       <FieldGroup label="New Password">
         <PasswordInput id="acct-new" value={newPass} onChange={setNewPass} />
+
+        {/* Password Strength Indicator */}
         {newPass.length > 0 && (
-          <div className="mt-2.5 space-y-1.5">
-            <div className="flex gap-1.5">
-              {[1, 2, 3].map(i => (
+          <div className="mt-3 space-y-2">
+            <div className="strength-bar-container" style={{ display: "flex", gap: "6px" }}>
+              {[1, 2, 3, 4, 5].map((level) => (
                 <div
-                  key={i}
-                  className={cn(
-                    "h-1.5 flex-1 rounded-full transition-all duration-500",
-                    i <= strength ? strengthMeta[strength].color : "bg-muted"
-                  )}
+                  key={level}
+                  className="strength-bar"
+                  style={{
+                    flex: 1,
+                    height: "3px",
+                    borderRadius: "3px",
+                    background: level <= passwordStrength.score ? passwordStrength.color : "#ede7e6",
+                    transition: "all 0.2s ease"
+                  }}
                 />
               ))}
             </div>
-            <p className={cn(
-              "text-[11px] font-bold",
-              strength === 1 ? "text-red-500" : strength === 2 ? "text-yellow-600" : "text-green-600"
-            )}>
-              {strengthMeta[strength].label} password
-            </p>
+            {passwordStrength.label && (
+              <div className="strength-label" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600, color: passwordStrength.color }}>
+                {passwordStrength.label} password
+              </div>
+            )}
+            <ul className="requirements-list" style={{ listStyle: "none", padding: 0, margin: "8px 0 0 0", display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {passwordStrength.requirements.map((req, index) => (
+                <li key={index} className="requirement-item requirement-unmet" style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontFamily: "'DM Sans', sans-serif", fontSize: "9px", fontWeight: 500, padding: "3px 8px", borderRadius: "12px", color: "#9a8180", background: "rgba(188, 93, 93, 0.08)" }}>
+                  <span>○</span>
+                  {req}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </FieldGroup>
@@ -352,9 +421,9 @@ function PasswordSection() {
         {confirm.length > 0 && (
           <p className={cn(
             "text-[11px] font-semibold mt-1.5 flex items-center gap-1",
-            newPass === confirm ? "text-green-600" : "text-red-500"
+            passwordsMatch ? "text-green-600" : "text-red-500"
           )}>
-            {newPass === confirm
+            {passwordsMatch
               ? <><CheckCircleIcon className="w-3 h-3" /> Passwords match</>
               : "Passwords do not match"
             }
@@ -388,12 +457,11 @@ export default function AccountSettings({ open, onClose }: Props) {
 
         <div className="flex flex-col sm:flex-row" style={{ minHeight: "min(520px, 90vh)" }}>
 
-          {/* ── Sidebar ── */}
+          {/* Sidebar */}
           <div
             className="sm:w-60 shrink-0 flex flex-col"
             style={{ background: "#2e2726" }}
           >
-            {/* User card */}
             <div className="px-5 pt-6 pb-5 border-b border-white/5">
               <div className="flex sm:flex-col items-center sm:items-start gap-3 sm:gap-0">
                 <div
@@ -409,7 +477,6 @@ export default function AccountSettings({ open, onClose }: Props) {
               </div>
             </div>
 
-            {/* Nav */}
             <nav className="flex flex-row sm:flex-col gap-1 p-3 overflow-x-auto sm:overflow-visible">
               {SECTIONS.map(s => (
                 <button
@@ -441,7 +508,7 @@ export default function AccountSettings({ open, onClose }: Props) {
             </nav>
           </div>
 
-          {/* ── Content ── */}
+          {/* Content */}
           <div className="flex-1 p-5 sm:p-8 overflow-y-auto bg-gray-50/50 min-w-0">
             {section === "profile" && <ProfileSection />}
             {section === "email" && <EmailSection />}
