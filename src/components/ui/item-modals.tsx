@@ -3,7 +3,7 @@ import React from "react";
 import type { MenuItem } from "@/types";
 import { formatCurrency, formatMinutes, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ClockIcon, CheckCircleIcon, XCircleIcon, FireIcon } from "@heroicons/react/24/outline";
 import { cardUrl } from "@/lib/cloudinary";
@@ -25,6 +25,9 @@ export default function ItemDetailsModal({ item, open, onClose, onAddToCart }: I
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
                 <DialogTitle className="sr-only">{item.name}</DialogTitle>
+                <DialogDescription className="sr-only">
+                    Detailed information about {item.name} including price, description, preparation time, and availability
+                </DialogDescription>
 
                 {/* Image */}
                 <div className="relative w-full aspect-video bg-muted overflow-hidden">
