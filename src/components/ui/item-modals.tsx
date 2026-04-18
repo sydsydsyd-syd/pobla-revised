@@ -23,14 +23,14 @@ export default function ItemDetailsModal({ item, open, onClose, onAddToCart }: I
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
+            <DialogContent className="max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl flex flex-col max-h-[90vh]">
                 <DialogTitle className="sr-only">{item.name}</DialogTitle>
                 <DialogDescription className="sr-only">
                     Detailed information about {item.name} including price, description, preparation time, and availability
                 </DialogDescription>
 
-                {/* Image */}
-                <div className="relative w-full aspect-video bg-muted overflow-hidden">
+                {/* Image - Fixed height, not scrollable */}
+                <div className="relative w-full aspect-video bg-muted overflow-hidden shrink-0">
                     {item.imageUrl ? (
                         <img
                             src={cardUrl(item.imageUrl)}
@@ -57,71 +57,77 @@ export default function ItemDetailsModal({ item, open, onClose, onAddToCart }: I
                     )}
                 </div>
 
-                {/* Content */}
-                <div className="p-5 space-y-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <h3 className="font-display font-bold text-lg text-foreground">{item.name}</h3>
-                            <p className="font-display font-black text-2xl text-brand mt-1">{formatCurrency(item.price)}</p>
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    {item.description && (
-                        <div>
-                            <h4 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Description</h4>
-                            <p className="text-sm text-muted-foreground leading-relaxed font-['DM Sans']">{item.description}</p>
-                        </div>
-                    )}
-
-                    {/* Details Grid */}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                        <div className="flex items-center gap-2 text-sm font-['DM Sans']">
-                            <ClockIcon className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-foreground">{formatMinutes(item.preparationTime)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm font-['DM Sans']">
-                            {item.available ? (
-                                <>
-                                    <CheckCircleIcon className="w-4 h-4 text-green-600" />
-                                    <span className="text-green-600">Available</span>
-                                </>
-                            ) : (
-                                <>
-                                    <XCircleIcon className="w-4 h-4 text-destructive" />
-                                    <span className="text-destructive">Unavailable</span>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Category */}
-                    <div>
-                        <h4 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Category</h4>
-                        <Badge variant="secondary" className="text-xs font-['DM Sans'] bg-muted/40 text-foreground border-border">
-                            {item.category}
-                        </Badge>
-                    </div>
-
-                    {/* Tags */}
-                    {displayTags.length > 0 && (
-                        <div>
-                            <h4 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Tags</h4>
-                            <div className="flex flex-wrap gap-1.5">
-                                {displayTags.map((tag) => (
-                                    <span
-                                        key={tag}
-                                        className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand/10 text-brand/80 border-0"
-                                    >
-                                        {tag}
-                                    </span>
-                                ))}
+                {/* Scrollable Content Area */}
+                <div className="flex-1 overflow-y-auto">
+                    <div className="p-5 space-y-4">
+                        {/* Header */}
+                        <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                                <h3 className="font-display font-bold text-lg text-foreground">{item.name}</h3>
+                                <p className="font-display font-black text-2xl text-brand mt-1">{formatCurrency(item.price)}</p>
                             </div>
                         </div>
-                    )}
 
-                    {/* Add to Cart Button */}
+                        {/* Description */}
+                        {item.description && (
+                            <div>
+                                <h4 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Description</h4>
+                                <p className="text-sm text-muted-foreground leading-relaxed font-['DM Sans'] break-words whitespace-normal">
+                                    {item.description}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                            <div className="flex items-center gap-2 text-sm font-['DM Sans']">
+                                <ClockIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                                <span className="text-foreground">{formatMinutes(item.preparationTime)}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-['DM Sans']">
+                                {item.available ? (
+                                    <>
+                                        <CheckCircleIcon className="w-4 h-4 text-green-600 shrink-0" />
+                                        <span className="text-green-600">Available</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <XCircleIcon className="w-4 h-4 text-destructive shrink-0" />
+                                        <span className="text-destructive">Unavailable</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Category */}
+                        <div>
+                            <h4 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Category</h4>
+                            <Badge variant="secondary" className="text-xs font-['DM Sans'] bg-muted/40 text-foreground border-border">
+                                {item.category}
+                            </Badge>
+                        </div>
+
+                        {/* Tags */}
+                        {displayTags.length > 0 && (
+                            <div>
+                                <h4 className="font-display text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Tags</h4>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {displayTags.map((tag) => (
+                                        <span
+                                            key={tag}
+                                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-brand/10 text-brand/80 border-0 whitespace-nowrap"
+                                        >
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Footer with Button - Fixed at bottom */}
+                <div className="p-5 border-t border-border shrink-0">
                     <Button
                         onClick={() => {
                             onAddToCart(item);
