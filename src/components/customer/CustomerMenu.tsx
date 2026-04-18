@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import OrderHistory from "./OrderHistory";
+import ItemDetailsModal from "@/components/ui/item-modals";
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -73,7 +74,11 @@ function SkeletonCard() {
   );
 }
 
-function MenuItemCard({ item, onGuestClick }: { item: MenuItem; onGuestClick: () => void }) {
+function MenuItemCard({ item, onGuestClick, onClick }: {
+  item: MenuItem;
+  onGuestClick: () => void;
+  onClick: () => void;
+}) {
   const { state, dispatch } = useApp();
   const { user, isGuest } = useAuth();
   const isLoggedIn = !!user && !isGuest;
@@ -93,10 +98,10 @@ function MenuItemCard({ item, onGuestClick }: { item: MenuItem; onGuestClick: ()
 
   return (
     <Card className={cn(
-      "overflow-hidden transition-all duration-200 group flex flex-col",
+      "overflow-hidden transition-all duration-200 group flex flex-col cursor-pointer hover:shadow-lg",
       !item.available && "opacity-55",
       qty > 0 && "ring-2 ring-brand/30 border-brand/40",
-    )}>
+    )} onClick={onClick}>
       {/* Image */}
       <div className={cn("relative w-full aspect-video overflow-hidden", !item.imageUrl && CAT_BG[item.category])}>
         {item.imageUrl ? (
@@ -194,6 +199,8 @@ export default function CustomerMenu({ onOpenCart, onLoginClick }: { onOpenCart:
   const [cat, setCat] = useState<MenuCategory | "All">("All");
   const [activeTab, setActiveTab] = useState<PageTab>("menu");
   const [guestBanner, setGuestBanner] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const { state, dispatch } = useApp();
   const { user, isGuest, exitGuest } = useAuth();
   const isLoggedIn = !!user && !isGuest;
@@ -232,6 +239,19 @@ export default function CustomerMenu({ onOpenCart, onLoginClick }: { onOpenCart:
   function showGuestBanner() {
     setGuestBanner(true);
     setTimeout(() => setGuestBanner(false), 4000);
+  }
+
+  function handleItemClick(item: MenuItem) {
+    setSelectedItem(item);
+    setDetailsModalOpen(true);
+  }
+
+  function handleAddToCart(item: MenuItem) {
+    if (!isLoggedIn) {
+      showGuestBanner();
+      return;
+    }
+    dispatch({ type: "ADD_TO_CART", payload: { menuItem: item, quantity: 1 } });
   }
 
   return (
@@ -383,7 +403,14 @@ export default function CustomerMenu({ onOpenCart, onLoginClick }: { onOpenCart:
                 <span className="text-xs text-muted-foreground">({items!.length})</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items!.map((item) => <MenuItemCard key={item.id} item={item} onGuestClick={showGuestBanner} />)}
+                {items!.map((item) => (
+                  <MenuItemCard
+                    key={item.id}
+                    item={item}
+                    onGuestClick={showGuestBanner}
+                    onClick={() => handleItemClick(item)}
+                  />
+                ))}
               </div>
             </section>
           ))}
@@ -414,6 +441,14 @@ export default function CustomerMenu({ onOpenCart, onLoginClick }: { onOpenCart:
           )}
         </>
       )}
+
+      {/* Item Details Modal */}
+      <ItemDetailsModal
+        item={selectedItem}
+        open={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        onAddToCart={handleAddToCart}
+      />
     </div>
   );
 }
