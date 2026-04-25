@@ -93,7 +93,6 @@ function TagsInput({
   function addTag() {
     const val = input.trim();
     if (!val) return;
-    // support comma-pasted input too
     const newTags = val
       .split(",")
       .map((t) => t.trim())
@@ -118,8 +117,6 @@ function TagsInput({
   return (
     <div className="space-y-1.5">
       <Label>Tags</Label>
-
-      {/* Tag chips */}
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {tags.map((tag) => (
@@ -139,8 +136,6 @@ function TagsInput({
           ))}
         </div>
       )}
-
-      {/* Input + Add button */}
       <div className="flex gap-2">
         <Input
           placeholder="e.g. bestseller, spicy, new"
@@ -171,7 +166,6 @@ function TagsInput({
 
 function MenuManagement() {
   const { state } = useApp();
-  // menuItems comes directly from Firestore via AppContext subscription
   const items = state.menuItems;
 
   const [filterCat, setFilterCat] = useState<MenuCategory | "All">("All");
@@ -180,8 +174,7 @@ function MenuManagement() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const filtered =
-    filterCat === "All" ? items : items.filter((i) => i.category === filterCat);
+  const filtered = filterCat === "All" ? items : items.filter((i) => i.category === filterCat);
 
   function openNew() {
     setSaveError(null);
@@ -216,12 +209,9 @@ function MenuManagement() {
 
     try {
       if (editItem.id) {
-        // ── Update existing item in Firestore ──
         const { id, createdAt, ...updates } = editItem as MenuItem;
         await updateMenuItem(id, updates);
       } else {
-        // ── Add new item to Firestore ──
-        const { id: _id, createdAt: _c, updatedAt: _u, ...newItem } = editItem as MenuItem;
         await addMenuItem({
           name: editItem.name!,
           description: editItem.description || "",
@@ -261,7 +251,6 @@ function MenuManagement() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {state.menuLoading
@@ -274,7 +263,6 @@ function MenuManagement() {
         </Button>
       </div>
 
-      {/* Error banner */}
       {state.menuError && (
         <div className="flex items-center gap-2 p-3 bg-destructive/5 border border-destructive/20 rounded-xl text-sm text-destructive">
           <ExclamationTriangleIcon className="w-4 h-4 shrink-0" />
@@ -282,7 +270,6 @@ function MenuManagement() {
         </div>
       )}
 
-      {/* Category filter */}
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
         {(["All", ...CATEGORIES] as (MenuCategory | "All")[]).map((cat) => (
           <button
@@ -300,25 +287,22 @@ function MenuManagement() {
         ))}
       </div>
 
-      {/* Table */}
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b border-border">
-                {["Photo", "Item", "Category", "Price", "Available", ""].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className={cn(
-                        "px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider",
-                        h === "" ? "text-right" : "text-left"
-                      )}
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {["Photo", "Item", "Category", "Price", "Available", ""].map((h) => (
+                  <th
+                    key={h}
+                    className={cn(
+                      "px-4 py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider",
+                      h === "" ? "text-right" : "text-left"
+                    )}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -337,11 +321,7 @@ function MenuManagement() {
                 </tr>
               )}
               {filtered.map((item) => (
-                <tr
-                  key={item.id}
-                  className="hover:bg-muted/20 transition-colors group"
-                >
-                  {/* Thumbnail from Cloudinary */}
+                <tr key={item.id} className="hover:bg-muted/20 transition-colors group">
                   <td className="px-4 py-3">
                     <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted flex items-center justify-center shrink-0">
                       {item.imageUrl ? (
@@ -357,9 +337,7 @@ function MenuManagement() {
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-semibold text-foreground">{item.name}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-1">
-                      {item.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="secondary" className="text-xs">
@@ -370,11 +348,7 @@ function MenuManagement() {
                     {formatCurrency(item.price)}
                   </td>
                   <td className="px-4 py-3">
-                    {/* Toggle writes directly to Firestore */}
-                    <Switch
-                      checked={item.available}
-                      onCheckedChange={() => handleToggleAvailable(item)}
-                    />
+                    <Switch checked={item.available} onCheckedChange={() => handleToggleAvailable(item)} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -399,7 +373,6 @@ function MenuManagement() {
         </div>
       </Card>
 
-      {/* Add / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -407,57 +380,36 @@ function MenuManagement() {
               {editItem?.id ? "Edit Menu Item" : "Add Menu Item"}
             </DialogTitle>
           </DialogHeader>
-
           {editItem && (
             <div className="space-y-4">
-              {/* Cloudinary image upload */}
               <ImageUpload
                 label="Food Photo" value={editItem.imageUrl || ""}
-                onChange={(url) =>
-                  setEditItem((p) => ({ ...p, imageUrl: url }))
-                }
-                onPublicId={(id) =>
-                  setEditItem((p) => ({ ...p, imagePublicId: id }))
-                }
+                onChange={(url) => setEditItem((p) => ({ ...p, imageUrl: url }))}
+                onPublicId={(id) => setEditItem((p) => ({ ...p, imagePublicId: id }))}
                 folder="pobla-menu" aspectRatio="landscape"
               />
-
               <div className="space-y-1.5">
                 <Label>Item Name</Label>
                 <Input
                   placeholder="e.g. Adobo sa Gata" value={editItem.name || ""}
-                  onChange={(e) =>
-                    setEditItem((p) => ({ ...p, name: e.target.value }))
-                  }
+                  onChange={(e) => setEditItem((p) => ({ ...p, name: e.target.value }))}
                 />
               </div>
-
               <div className="space-y-1.5">
                 <Label>Description</Label>
                 <Textarea
                   placeholder="Brief description of the dish..." value={editItem.description || ""}
-                  onChange={(e) =>
-                    setEditItem((p) => ({
-                      ...p,
-                      description: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setEditItem((p) => ({ ...p, description: e.target.value }))}
                   rows={2}
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Price (₱)</Label>
                   <Input
                     type="number" min={0}
                     value={editItem.price || ""}
-                    onChange={(e) =>
-                      setEditItem((p) => ({
-                        ...p,
-                        price: parseFloat(e.target.value),
-                      }))
-                    }
+                    onChange={(e) => setEditItem((p) => ({ ...p, price: parseFloat(e.target.value) }))}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -465,86 +417,49 @@ function MenuManagement() {
                   <Input
                     type="number" min={1}
                     value={editItem.preparationTime || ""}
-                    onChange={(e) =>
-                      setEditItem((p) => ({
-                        ...p,
-                        preparationTime: parseInt(e.target.value),
-                      }))
-                    }
+                    onChange={(e) => setEditItem((p) => ({ ...p, preparationTime: parseInt(e.target.value) }))}
                   />
                 </div>
               </div>
-
               <div className="space-y-1.5">
                 <Label>Category</Label>
                 <Select
-                  value={editItem.category || "Main Course"}
-                  onValueChange={(v) =>
-                    setEditItem((p) => ({
-                      ...p,
-                      category: v as MenuCategory,
-                    }))
-                  }
+                  value={editItem.category || MenuCategoryEnum.RICE_MEALS}
+                  onValueChange={(v) => setEditItem((p) => ({ ...p, category: v as MenuCategory }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
-              <TagsInput
-                tags={editItem.tags || []}
-                onChange={(tags) => setEditItem((p) => ({ ...p, tags }))}
-              />
-
+              <TagsInput tags={editItem.tags || []} onChange={(tags) => setEditItem((p) => ({ ...p, tags }))} />
               <div className="flex items-center justify-between p-3 bg-muted/40 rounded-xl">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">
-                    Available
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Show item on the menu
-                  </p>
+                  <p className="text-sm font-semibold text-foreground">Available</p>
+                  <p className="text-xs text-muted-foreground">Show item on the menu</p>
                 </div>
                 <Switch
                   checked={editItem.available ?? true}
-                  onCheckedChange={(v) =>
-                    setEditItem((p) => ({ ...p, available: v }))
-                  }
+                  onCheckedChange={(v) => setEditItem((p) => ({ ...p, available: v }))}
                 />
               </div>
-
-              {/* Save error */}
               {saveError && (
                 <p className="text-xs text-destructive flex items-center gap-1">
                   <ExclamationTriangleIcon className="w-3.5 h-3.5" />
                   {saveError}
                 </p>
               )}
-
               <div className="flex gap-2 pt-1">
-                <Button
-                  variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}
-                  disabled={saving}
-                >
+                <Button variant="outline" className="flex-1" onClick={() => setDialogOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button
-                  className="flex-1" onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving
-                    ? "Sine-save…"
-                    : editItem.id
-                      ? "Save Changes"
-                      : "Add Item"}
+                <Button className="flex-1" onClick={handleSave} disabled={saving}>
+                  {saving ? "Sine-save…" : editItem.id ? "Save Changes" : "Add Item"}
                 </Button>
               </div>
             </div>
@@ -561,19 +476,17 @@ function Reports() {
   const [orders, setOrders] = useState<import("@/types").Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Helper function to get display status for reports
   const getDisplayStatus = (order: import("@/types").Order): string => {
-    if (order.status === "completed") {
+    if (order.status === OrderStatusEnum.COMPLETED) {
       return order.orderType === "pickup" ? "Picked Up" : "Completed";
     }
     return ORDER_STATUS_LABEL[order.status];
   };
 
-  // Helper to get status variant for badge
   const getStatusVariant = (order: import("@/types").Order): "success" | "destructive" | "secondary" => {
-    if (order.status === "delivered" || (order.status === "completed" && order.orderType === "delivery")) return "success";
-    if (order.status === "completed" && order.orderType === "pickup") return "success";
-    if (order.status === "cancelled") return "destructive";
+    if (order.status === OrderStatusEnum.DELIVERED || (order.status === OrderStatusEnum.COMPLETED && order.orderType === "delivery")) return "success";
+    if (order.status === OrderStatusEnum.COMPLETED && order.orderType === "pickup") return "success";
+    if (order.status === OrderStatusEnum.CANCELLED) return "destructive";
     return "secondary";
   };
 
@@ -603,13 +516,17 @@ function Reports() {
   }, []);
 
   const stats = useMemo(() => {
-    const revenue = orders
-      .filter((o) => o.status !== "cancelled")
-      .reduce((s, o) => s + o.total, 0);
-    const delivered = orders.filter((o) => o.status === "delivered").length;
-    const avg = orders.length > 0 ? revenue / orders.length : 0;
-    const itemMap: Record<string, { name: string; qty: number; rev: number }> =
-      {};
+    // FIXED: Only include delivered and completed orders for revenue (matches OwnerOrderHistory)
+    const deliveredAndCompleted = orders.filter(o =>
+      o.status === OrderStatusEnum.DELIVERED || o.status === OrderStatusEnum.COMPLETED
+    );
+
+    const revenue = deliveredAndCompleted.reduce((s, o) => s + o.total, 0);
+    const delivered = orders.filter(o => o.status === OrderStatusEnum.DELIVERED).length;
+    const completed = orders.filter(o => o.status === OrderStatusEnum.COMPLETED).length;
+    const avg = deliveredAndCompleted.length > 0 ? revenue / deliveredAndCompleted.length : 0;
+
+    const itemMap: Record<string, { name: string; qty: number; rev: number }> = {};
     orders.forEach((o) =>
       o.items.forEach((i) => {
         if (!itemMap[i.menuItemId])
@@ -622,24 +539,31 @@ function Reports() {
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 5);
 
-    // Calculate status counts with proper grouping
-    const pickupCompleted = orders.filter(o => o.status === "completed" && o.orderType === "pickup").length;
-    const deliveryCompleted = orders.filter(o => o.status === "completed" && o.orderType === "delivery").length;
+    const pickupCompleted = orders.filter(o => o.status === OrderStatusEnum.COMPLETED && o.orderType === "pickup").length;
+    const deliveryCompleted = orders.filter(o => o.status === OrderStatusEnum.COMPLETED && o.orderType === "delivery").length;
 
     const byStatus: Partial<Record<string, number>> = {};
     orders.forEach((o) => {
-      if (o.status === "completed") {
-        // Don't add to byStatus here, we'll handle separately
+      if (o.status === OrderStatusEnum.COMPLETED) {
         return;
       }
       byStatus[o.status] = (byStatus[o.status] || 0) + 1;
     });
 
-    // Add the split statuses
     if (pickupCompleted > 0) byStatus["picked_up"] = pickupCompleted;
     if (deliveryCompleted > 0) byStatus["completed"] = deliveryCompleted;
 
-    return { total: orders.length, revenue, delivered, avg, topItems, byStatus, pickupCompleted, deliveryCompleted };
+    return {
+      total: orders.length,
+      revenue,
+      delivered,
+      completed,
+      avg,
+      topItems,
+      byStatus,
+      pickupCompleted,
+      deliveryCompleted
+    };
   }, [orders]);
 
   if (loading) {
@@ -654,57 +578,26 @@ function Reports() {
 
   return (
     <div className="space-y-5">
-      {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          {
-            label: "Total Orders",
-            val: stats.total.toString(),
-            icon: <ShoppingBagIcon className="w-5 h-5" />,
-            cls: "bg-blue-50 text-blue-600",
-          },
-          {
-            label: "Total Revenue",
-            val: formatCurrency(stats.revenue),
-            icon: <CurrencyDollarIcon className="w-5 h-5" />,
-            cls: "bg-green-50 text-green-600",
-          },
-          {
-            label: "Delivered",
-            val: stats.delivered.toString(),
-            icon: <CheckCircleIcon className="w-5 h-5" />,
-            cls: "bg-brand/5 text-brand",
-          },
-          {
-            label: "Avg Order Value",
-            val: formatCurrency(stats.avg),
-            icon: <ArrowTrendingUpIcon className="w-5 h-5" />,
-            cls: "bg-purple-50 text-purple-600",
-          },
+          { label: "Total Orders", val: stats.total.toString(), icon: <ShoppingBagIcon className="w-5 h-5" />, cls: "bg-blue-50 text-blue-600" },
+          { label: "Total Revenue", val: formatCurrency(stats.revenue), icon: <CurrencyDollarIcon className="w-5 h-5" />, cls: "bg-green-50 text-green-600" },
+          { label: "Fulfilled", val: (stats.delivered + stats.completed).toString(), icon: <CheckCircleIcon className="w-5 h-5" />, cls: "bg-brand/5 text-brand" },
+          { label: "Avg Order Value", val: formatCurrency(stats.avg), icon: <ArrowTrendingUpIcon className="w-5 h-5" />, cls: "bg-purple-50 text-purple-600" },
         ].map((kpi) => (
           <Card key={kpi.label}>
             <CardContent className="p-4">
-              <div
-                className={cn(
-                  "w-9 h-9 rounded-xl flex items-center justify-center mb-2",
-                  kpi.cls
-                )}
-              >
+              <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center mb-2", kpi.cls)}>
                 {kpi.icon}
               </div>
-              <p className="font-display font-black text-xl text-foreground">
-                {kpi.val}
-              </p>
-              <p className="text-xs text-muted-foreground font-medium mt-0.5">
-                {kpi.label}
-              </p>
+              <p className="font-display font-black text-xl text-foreground">{kpi.val}</p>
+              <p className="text-xs text-muted-foreground font-medium mt-0.5">{kpi.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Top Items */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-1.5">
@@ -714,43 +607,25 @@ function Reports() {
           </CardHeader>
           <CardContent>
             {stats.topItems.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No orders yet
-              </p>
+              <p className="text-xs text-muted-foreground text-center py-4">No orders yet</p>
             ) : (
               stats.topItems.map((item, i) => (
-                <div
-                  key={item.name}
-                  className="flex items-center gap-2 py-2 border-b border-border last:border-0"
-                >
-                  <span
-                    className={cn(
-                      "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0",
-                      i === 0
-                        ? "bg-yellow-400 text-yellow-900"
-                        : i === 1
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-brand/10 text-brand"
-                    )}
-                  >
+                <div key={item.name} className="flex items-center gap-2 py-2 border-b border-border last:border-0">
+                  <span className={cn(
+                    "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0",
+                    i === 0 ? "bg-yellow-400 text-yellow-900" : i === 1 ? "bg-muted text-muted-foreground" : "bg-brand/10 text-brand"
+                  )}>
                     {i + 1}
                   </span>
-                  <span className="flex-1 text-xs font-medium text-foreground truncate">
-                    {item.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {item.qty} sold
-                  </span>
-                  <span className="text-xs font-bold text-green-600">
-                    {formatCurrency(item.rev)}
-                  </span>
+                  <span className="flex-1 text-xs font-medium text-foreground truncate">{item.name}</span>
+                  <span className="text-xs text-muted-foreground">{item.qty} sold</span>
+                  <span className="text-xs font-bold text-green-600">{formatCurrency(item.rev)}</span>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
 
-        {/* Orders by Status */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-1.5">
@@ -760,14 +635,11 @@ function Reports() {
           </CardHeader>
           <CardContent>
             {Object.entries(stats.byStatus).length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No orders yet
-              </p>
+              <p className="text-xs text-muted-foreground text-center py-4">No orders yet</p>
             ) : (
               Object.entries(stats.byStatus).map(([status, count]) => {
                 const pct = stats.total > 0 ? Math.round((count! / stats.total) * 100) : 0;
                 let displayLabel = "";
-
                 if (status === "picked_up") {
                   displayLabel = "Picked Up";
                 } else if (status === "completed") {
@@ -775,9 +647,7 @@ function Reports() {
                 } else {
                   displayLabel = ORDER_STATUS_LABEL[status as OrderStatus] || status;
                 }
-
                 const barColor = "bg-brand";
-
                 return (
                   <div key={status} className="mb-3 last:mb-0">
                     <div className="flex justify-between text-xs mb-1">
@@ -785,10 +655,7 @@ function Reports() {
                       <span className="font-semibold text-foreground">{count}</span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full transition-all", barColor)}
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className={cn("h-full rounded-full transition-all", barColor)} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -798,7 +665,6 @@ function Reports() {
         </Card>
       </div>
 
-      {/* Recent Orders Table */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-1.5">
@@ -808,22 +674,14 @@ function Reports() {
         </CardHeader>
         <CardContent className="p-0">
           {orders.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-10">
-              No orders placed yet
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-10">No orders placed yet</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/50 border-b border-border">
                     {["Order #", "Customer", "Status", "Type", "Total"].map((h) => (
-                      <th
-                        key={h}
-                        className={cn(
-                          "px-4 py-3 text-xs font-bold text-muted-foreground",
-                          h === "Total" ? "text-right" : "text-left"
-                        )}
-                      >
+                      <th key={h} className={cn("px-4 py-3 text-xs font-bold text-muted-foreground", h === "Total" ? "text-right" : "text-left")}>
                         {h}
                       </th>
                     ))}
@@ -832,23 +690,13 @@ function Reports() {
                 <tbody className="divide-y divide-border">
                   {orders.slice(0, 10).map((order) => (
                     <tr key={order.id} className="hover:bg-muted/20">
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-muted-foreground">
-                        {order.orderNumber}
-                      </td>
-                      <td className="px-4 py-3 text-foreground">
-                        {order.customerName}
-                      </td>
+                      <td className="px-4 py-3 font-mono text-xs font-bold text-muted-foreground">{order.orderNumber}</td>
+                      <td className="px-4 py-3 text-foreground">{order.customerName}</td>
                       <td className="px-4 py-3">
-                        <Badge variant={getStatusVariant(order)} className="text-[10px]">
-                          {getDisplayStatus(order)}
-                        </Badge>
+                        <Badge variant={getStatusVariant(order)} className="text-[10px]">{getDisplayStatus(order)}</Badge>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground capitalize">
-                        {order.orderType}
-                      </td>
-                      <td className="px-4 py-3 text-right font-display font-bold text-brand">
-                        {formatCurrency(order.total)}
-                      </td>
+                      <td className="px-4 py-3 text-muted-foreground capitalize">{order.orderType}</td>
+                      <td className="px-4 py-3 text-right font-display font-bold text-brand">{formatCurrency(order.total)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -863,7 +711,6 @@ function Reports() {
 
 // ─── Add User Dialog ─────────────────────────────────────────────────────────
 
-// "delivery" is intentionally excluded — riders register via the Rider Registration page
 const STAFF_ROLES: AppRole[] = ["kitchen", "owner"];
 
 interface AddUserDialogProps {
@@ -953,46 +800,27 @@ function AddUserDialog({ open, onClose, onSuccess }: AddUserDialogProps) {
               {error}
             </div>
           )}
-
           <div className="space-y-1.5">
             <Label htmlFor="au-name">Full Name</Label>
-            <Input
-              id="au-name" placeholder="Juan dela Cruz" value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded-xl"
-            />
+            <Input id="au-name" placeholder="Juan dela Cruz" value={name} onChange={(e) => setName(e.target.value)} className="rounded-xl" />
           </div>
-
           <div className="space-y-1.5">
             <Label htmlFor="au-email">Email</Label>
-            <Input
-              id="au-email" type="email" placeholder="juan@email.com" value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded-xl"
-            />
+            <Input id="au-email" type="email" placeholder="juan@email.com" value={email} onChange={(e) => setEmail(e.target.value)} className="rounded-xl" />
           </div>
-
           <div className="space-y-1.5">
             <Label htmlFor="au-password">Password</Label>
             <div className="relative">
-              <Input
-                id="au-password" type={showPass ? "text" : "password"}
-                placeholder="••••••••" value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="rounded-xl pr-10"
-              />
-              <button
-                type="button" onClick={() => setShowPass((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPass
-                  ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" /></svg>
-                  : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                }
+              <Input id="au-password" type={showPass ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-xl pr-10" />
+              <button type="button" onClick={() => setShowPass((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                {showPass ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" /></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                )}
               </button>
             </div>
           </div>
-
           <div className="space-y-1.5">
             <Label>Role</Label>
             <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
@@ -1003,10 +831,7 @@ function AddUserDialog({ open, onClose, onSuccess }: AddUserDialogProps) {
                 {STAFF_ROLES.map((r) => (
                   <SelectItem key={r} value={r}>
                     <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-2 h-2 rounded-full inline-block",
-                        r === "kitchen" ? "bg-orange-400" : "bg-purple-400"
-                      )} />
+                      <span className={cn("w-2 h-2 rounded-full inline-block", r === "kitchen" ? "bg-orange-400" : "bg-purple-400")} />
                       {ROLE_LABELS[r]}
                     </div>
                   </SelectItem>
@@ -1014,23 +839,10 @@ function AddUserDialog({ open, onClose, onSuccess }: AddUserDialogProps) {
               </SelectContent>
             </Select>
           </div>
-
           <div className="flex gap-2 justify-end pt-2">
-            <Button variant="outline" onClick={handleClose} disabled={saving}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={saving}
-              style={{ background: "#bc5d5d" }}
-              className="text-white"
-            >
-              {saving ? (
-                <span className="flex items-center gap-2">
-                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                  Creating…
-                </span>
-              ) : "Create Account"}
+            <Button variant="outline" onClick={handleClose} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving} style={{ background: "#bc5d5d" }} className="text-white">
+              {saving ? <span className="flex items-center gap-2"><ArrowPathIcon className="w-4 h-4 animate-spin" /> Creating…</span> : "Create Account"}
             </Button>
           </div>
         </div>
@@ -1150,80 +962,43 @@ function UserManagement() {
   return (
     <div className="space-y-5">
       {toast && (
-        <div className={cn(
-          "flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border",
-          toast.ok
-            ? "bg-green-50 text-green-700 border-green-200"
-            : "bg-red-50 text-red-700 border-red-200"
-        )}>
+        <div className={cn("flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border", toast.ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200")}>
           <CheckCircleIcon className="w-4 h-4 shrink-0" />
           {toast.msg}
         </div>
       )}
-
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {(["customer", "kitchen", "delivery", "owner", "delivery_pending", "rejected"] as AppRole[]).map((r) => (
-          <button
-            key={r}
-            onClick={() => setFilterRole(filterRole === r ? "all" : r)}
-            className={cn(
-              "p-3 rounded-2xl border text-left transition-all",
-              filterRole === r
-                ? "border-brand bg-brand/5"
-                : "border-border bg-white hover:border-brand/30"
-            )}
-          >
+          <button key={r} onClick={() => setFilterRole(filterRole === r ? "all" : r)} className={cn("p-3 rounded-2xl border text-left transition-all", filterRole === r ? "border-brand bg-brand/5" : "border-border bg-white hover:border-brand/30")}>
             <p className="text-xl font-black font-display text-foreground">{counts[r]}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{ROLE_LABELS[r]}</p>
           </button>
         ))}
       </div>
-
       <div className="flex gap-2">
         <div className="relative flex-1">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or email…" value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 rounded-xl"
-          />
+          <Input placeholder="Search by name or email…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 rounded-xl" />
         </div>
-        <Button
-          onClick={() => setAddUserOpen(true)}
-          className="rounded-xl shrink-0 text-white font-semibold flex items-center gap-1.5" style={{ background: "#bc5d5d" }}
-        >
-          <PlusIcon className="w-4 h-4" />
-          <span className="hidden sm:inline">Add User</span>
+        <Button onClick={() => setAddUserOpen(true)} className="rounded-xl shrink-0 text-white font-semibold flex items-center gap-1.5" style={{ background: "#bc5d5d" }}>
+          <PlusIcon className="w-4 h-4" /><span className="hidden sm:inline">Add User</span>
         </Button>
         <Button variant="outline" size="icon" onClick={fetchUsers} className="rounded-xl shrink-0">
           <ArrowPathIcon className={cn("w-4 h-4", loading && "animate-spin")} />
         </Button>
       </div>
-
-      <AddUserDialog
-        open={addUserOpen}
-        onClose={() => setAddUserOpen(false)}
-        onSuccess={(newUser) => {
-          setUsers((prev) => [newUser, ...prev]);
-          showToast(`${newUser.name} (${ROLE_LABELS[newUser.role]}) created!`);
-        }}
-      />
-
+      <AddUserDialog open={addUserOpen} onClose={() => setAddUserOpen(false)} onSuccess={(newUser) => { setUsers((prev) => [newUser, ...prev]); showToast(`${newUser.name} (${ROLE_LABELS[newUser.role]}) created!`); }} />
       {loading && (
         <div className="space-y-3">
-          {[1, 2, 3].map((n) => (
+          {[1, 2, 3].map(n => (
             <div key={n} className="rounded-2xl border border-border p-4 animate-pulse flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3 bg-muted rounded w-1/3" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </div>
+              <div className="flex-1 space-y-2"><div className="h-3 bg-muted rounded w-1/3" /><div className="h-3 bg-muted rounded w-1/2" /></div>
               <div className="h-8 bg-muted rounded-lg w-32" />
             </div>
           ))}
         </div>
       )}
-
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
           <UsersIcon className="w-12 h-12 text-muted mx-auto mb-3" />
@@ -1231,81 +1006,43 @@ function UserManagement() {
           <p className="text-sm text-muted-foreground mt-1">Try a different search or filter</p>
         </div>
       )}
-
       {!loading && filtered.map((user) => (
-        <div key={user.uid}
-          className="bg-white rounded-2xl border border-border p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow"
-        >
+        <div key={user.uid} className="bg-white rounded-2xl border border-border p-4 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
           <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-black text-sm text-white" style={{ background: "#bc5d5d" }}>
             {user.name?.charAt(0)?.toUpperCase() ?? "?"}
           </div>
-
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-foreground truncate">{user.name}</p>
             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
           </div>
-
           <div className="flex items-center gap-2 shrink-0">
-            <span className={cn(
-              "hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold border",
-              ROLE_COLORS[user.role]
-            )}>
-              <ShieldCheckIcon className="w-3 h-3" />
-              {ROLE_LABELS[user.role]}
+            <span className={cn("hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold border", ROLE_COLORS[user.role])}>
+              <ShieldCheckIcon className="w-3 h-3" /> {ROLE_LABELS[user.role]}
             </span>
-
-            <Select
-              value={user.role}
-              onValueChange={(v) => handleRoleChange(user.uid, v as AppRole)}
-              disabled={saving === user.uid}
-            >
-              <SelectTrigger className="w-36 h-8 text-xs rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={user.role} onValueChange={(v) => handleRoleChange(user.uid, v as AppRole)} disabled={saving === user.uid}>
+              <SelectTrigger className="w-36 h-8 text-xs rounded-xl"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => (
-                  <SelectItem key={r} value={r} className="text-xs">
-                    {ROLE_LABELS[r]}
-                  </SelectItem>
-                ))}
+                {(Object.keys(ROLE_LABELS) as AppRole[]).map((r) => <SelectItem key={r} value={r} className="text-xs">{ROLE_LABELS[r]}</SelectItem>)}
               </SelectContent>
             </Select>
-
-            {saving === user.uid && (
-              <ArrowPathIcon className="w-4 h-4 animate-spin text-brand shrink-0" />
-            )}
-
-            <button
-              onClick={() => setDeleteTarget(user)}
-              disabled={saving === user.uid}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all"
-            >
+            {saving === user.uid && <ArrowPathIcon className="w-4 h-4 animate-spin text-brand shrink-0" />}
+            <button onClick={() => setDeleteTarget(user)} disabled={saving === user.uid} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all">
               <TrashIcon className="w-4 h-4" />
             </button>
           </div>
         </div>
       ))}
-
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove User</DialogTitle>
-            <DialogDescription>
-              This action removes the user's profile from the system.
-            </DialogDescription>
+            <DialogDescription>This action removes the user's profile from the system.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to remove{" "}
-              <strong className="text-foreground">{deleteTarget?.name}</strong>?
-              This only removes their Firestore profile — their Firebase Auth account remains.
-            </p>
+            <p className="text-sm text-muted-foreground">Are you sure you want to remove <strong className="text-foreground">{deleteTarget?.name}</strong>? This only removes their Firestore profile — their Firebase Auth account remains.</p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-              <Button
-                variant="destructive" onClick={() => deleteTarget && handleDelete(deleteTarget)}
-                disabled={saving === deleteTarget?.uid}
-              >
+              <Button variant="destructive" onClick={() => deleteTarget && handleDelete(deleteTarget)} disabled={saving === deleteTarget?.uid}>
                 {saving === deleteTarget?.uid ? "Removing…" : "Remove"}
               </Button>
             </div>
@@ -1369,31 +1106,17 @@ function RiderApprovals() {
   return (
     <div className="space-y-5">
       {toast && (
-        <div className={cn(
-          "flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border",
-          toast.ok
-            ? "bg-green-50 text-green-700 border-green-200"
-            : "bg-red-50 text-red-700 border-red-200"
-        )}>
+        <div className={cn("flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border", toast.ok ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200")}>
           <CheckCircleIcon className="w-4 h-4 shrink-0" />
           {toast.msg}
         </div>
       )}
-
       <div className="flex items-center gap-2">
         <h3 className="font-display font-bold text-foreground">Rider Registrations</h3>
-        {pending.length > 0 && (
-          <span className="text-xs font-black text-white bg-brand px-2 py-0.5 rounded-full">{pending.length} pending</span>
-        )}
+        {pending.length > 0 && <span className="text-xs font-black text-white bg-brand px-2 py-0.5 rounded-full">{pending.length} pending</span>}
       </div>
-
       {loading && <p className="text-sm text-muted-foreground">Loading registrations...</p>}
-
-      {!loading && pending.length === 0 && reviewed.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground text-sm">No rider registrations yet</div>
-      )}
-
-      {/* Pending */}
+      {!loading && pending.length === 0 && reviewed.length === 0 && <div className="text-center py-12 text-muted-foreground text-sm">No rider registrations yet</div>}
       {pending.length > 0 && (
         <div className="space-y-3">
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Awaiting Review</p>
@@ -1410,61 +1133,30 @@ function RiderApprovals() {
                 </div>
                 <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-1 rounded-full border">Pending</span>
               </div>
-              <input
-                type="text" placeholder="Rejection reason (if rejecting)..." value={rejReason[reg.id] || ""}
-                onChange={e => setRejReason(r => ({ ...r, [reg.id]: e.target.value }))}
-                className="w-full text-xs border border-border rounded-xl px-3 py-2 bg-muted/40 focus:outline-none focus:ring-1 focus:ring-brand"
-              />
+              <input type="text" placeholder="Rejection reason (if rejecting)..." value={rejReason[reg.id] || ""} onChange={e => setRejReason(r => ({ ...r, [reg.id]: e.target.value }))} className="w-full text-xs border border-border rounded-xl px-3 py-2 bg-muted/40 focus:outline-none focus:ring-1 focus:ring-brand" />
               <div className="flex gap-2">
-                <button
-                  onClick={() => handleApprove(reg)}
-                  disabled={processingId === reg.id}
-                  className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ background: "#bc5d5d" }}
-                >
-                  {processingId === reg.id ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                      Processing...
-                    </span>
-                  ) : (
-                    "Approve & Send Email"
-                  )}
+                <button onClick={() => handleApprove(reg)} disabled={processingId === reg.id} className="flex-1 py-2 rounded-xl text-sm font-bold text-white transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: "#bc5d5d" }}>
+                  {processingId === reg.id ? <span className="flex items-center justify-center gap-2"><ArrowPathIcon className="w-4 h-4 animate-spin" /> Processing...</span> : "Approve & Send Email"}
                 </button>
-                <button
-                  onClick={() => handleReject(reg)}
-                  disabled={processingId === reg.id}
-                  className="flex-1 py-2 rounded-xl text-sm font-bold border border-red-300 text-red-600 hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button onClick={() => handleReject(reg)} disabled={processingId === reg.id} className="flex-1 py-2 rounded-xl text-sm font-bold border border-red-300 text-red-600 hover:bg-red-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                   {processingId === reg.id ? "Processing..." : "Reject & Send Email"}
                 </button>
               </div>
-              <p className="text-[10px] text-muted-foreground text-center">
-                {processingId === reg.id ? "Sending email notification..." : "Email will be sent automatically"}
-              </p>
+              <p className="text-[10px] text-muted-foreground text-center">{processingId === reg.id ? "Sending email notification..." : "Email will be sent automatically"}</p>
             </div>
           ))}
         </div>
       )}
-
-      {/* Reviewed */}
       {reviewed.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Reviewed</p>
           {reviewed.map(reg => (
             <div key={reg.id} className="flex items-center gap-3 p-3 bg-white border border-border rounded-xl">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{reg.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{reg.email}</p>
-              </div>
-              <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full border",
-                reg.status === "approved" ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-600 border-red-200"
-              )}>
+              <div className="flex-1 min-w-0"><p className="text-sm font-semibold text-foreground truncate">{reg.name}</p><p className="text-xs text-muted-foreground truncate">{reg.email}</p></div>
+              <span className={cn("text-[10px] font-bold px-2 py-1 rounded-full border", reg.status === "approved" ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-600 border-red-200")}>
                 {reg.status === "approved" ? "✓ Approved" : "✗ Rejected"}
               </span>
-              {reg.status === "approved" && (
-                <span className="text-[10px] text-green-600">📧 Email sent</span>
-              )}
+              {reg.status === "approved" && <span className="text-[10px] text-green-600">📧 Email sent</span>}
             </div>
           ))}
         </div>
@@ -1477,46 +1169,22 @@ export default function OwnerDashboard() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="mb-6">
-        <h2 className="font-display font-bold text-xl text-foreground">
-          Owner Dashboard
-        </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Manage your menu, monitor sales, and control user roles
-        </p>
+        <h2 className="font-display font-bold text-xl text-foreground">Owner Dashboard</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Manage your menu, monitor sales, and control user roles</p>
       </div>
       <Tabs defaultValue="reports">
         <TabsList className="mb-6">
-          <TabsTrigger value="reports" className="flex items-center gap-1.5">
-            <ChartBarIcon className="w-4 h-4" /> Sales Reports
-          </TabsTrigger>
-          <TabsTrigger value="menu" className="flex items-center gap-1.5">
-            <ClipboardDocumentListIcon className="w-4 h-4" /> Menu Management
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-1.5">
-            <UsersIcon className="w-4 h-4" /> User Management
-          </TabsTrigger>
-          <TabsTrigger value="riders" className="flex items-center gap-1.5">
-            <TruckIcon className="w-4 h-4" /> Rider Approvals
-          </TabsTrigger>
-          <TabsTrigger value="orders" className="flex items-center gap-1.5">
-            <InboxIcon className="w-4 h-4" /> Order History
-          </TabsTrigger>
+          <TabsTrigger value="reports" className="flex items-center gap-1.5"><ChartBarIcon className="w-4 h-4" /> Sales Reports</TabsTrigger>
+          <TabsTrigger value="menu" className="flex items-center gap-1.5"><ClipboardDocumentListIcon className="w-4 h-4" /> Menu Management</TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-1.5"><UsersIcon className="w-4 h-4" /> User Management</TabsTrigger>
+          <TabsTrigger value="riders" className="flex items-center gap-1.5"><TruckIcon className="w-4 h-4" /> Rider Approvals</TabsTrigger>
+          <TabsTrigger value="orders" className="flex items-center gap-1.5"><InboxIcon className="w-4 h-4" /> Order History</TabsTrigger>
         </TabsList>
-        <TabsContent value="reports">
-          <Reports />
-        </TabsContent>
-        <TabsContent value="menu">
-          <MenuManagement />
-        </TabsContent>
-        <TabsContent value="users">
-          <UserManagement />
-        </TabsContent>
-        <TabsContent value="riders">
-          <RiderApprovals />
-        </TabsContent>
-        <TabsContent value="orders">
-          <OwnerOrderHistory />
-        </TabsContent>
+        <TabsContent value="reports"><Reports /></TabsContent>
+        <TabsContent value="menu"><MenuManagement /></TabsContent>
+        <TabsContent value="users"><UserManagement /></TabsContent>
+        <TabsContent value="riders"><RiderApprovals /></TabsContent>
+        <TabsContent value="orders"><OwnerOrderHistory /></TabsContent>
       </Tabs>
     </div>
   );
